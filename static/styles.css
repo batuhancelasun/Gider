@@ -1351,6 +1351,7 @@ body::before {
     
     /* Recurring items - vertical layout on mobile */
     .recurring-item {
+        display: flex !important;
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 0.75rem !important;
@@ -1358,31 +1359,35 @@ body::before {
     }
     
     .recurring-item > div:first-child {
-        align-self: flex-start;
-        width: 40px;
-        height: 40px;
-        flex-shrink: 0;
+        align-self: flex-start !important;
+        width: 40px !important;
+        height: 40px !important;
+        flex-shrink: 0 !important;
+        margin-bottom: 0 !important;
     }
     
     .recurring-item > div:nth-child(2) {
-        flex: 1;
-        width: 100%;
-        min-width: 0;
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
     }
     
     .recurring-item > div:nth-child(3) {
         text-align: left !important;
-        align-self: flex-start;
-        width: 100%;
+        align-self: flex-start !important;
+        width: 100% !important;
+        margin-left: 0 !important;
     }
     
     .recurring-item > div:last-child {
-        align-self: flex-end;
-        width: 100%;
-        justify-content: flex-end;
-        margin-top: 0.25rem;
-        padding-top: 0.5rem;
-        border-top: 1px solid var(--border);
+        align-self: stretch !important;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        margin-top: 0.5rem !important;
+        padding-top: 0.75rem !important;
+        border-top: 1px solid var(--border) !important;
     }
 
     .stats-grid {

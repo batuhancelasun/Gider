@@ -505,12 +505,7 @@ body::before {
     margin-bottom: 1.5rem;
 }
 
-/* Recurring page specific - ensure horizontal layout */
-.recurring-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-}
+
 
 .stat-card {
     background: var(--bg-secondary);
@@ -1354,11 +1349,7 @@ body::before {
         grid-template-columns: 1fr;
     }
 
-    /* Keep stats horizontal on recurring page - REMOVED per user request for vertical stacking */
-    .recurring-stats-grid {
-        grid-template-columns: 1fr !important;
-        /* display: grid !important; */
-    }
+
 
 
 

@@ -179,6 +179,23 @@ export const RecurringView = {
 
         renderRecurringLists();
         updateRecurringStats();
+
+        // Force vertical layout on mobile - inject CSS dynamically
+        const mobileStyleId = 'recurring-mobile-fix';
+        if (!document.getElementById(mobileStyleId)) {
+            const style = document.createElement('style');
+            style.id = mobileStyleId;
+            style.textContent = `
+                @media (max-width: 900px) {
+                    .stats-grid {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        gap: 1rem !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 };
 

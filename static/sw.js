@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gider-v11';
+const CACHE_NAME = 'gider-v12';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -77,7 +77,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Static Assets: Cache First, fallback to Network
+  // 3. JS and CSS files: Network First to ensure fresh code
+  if (event.request.url.endsWith('.js') || event.request.url.endsWith('.css')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Cache the fresh response
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if offline
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // 4. Other Static Assets: Cache First, fallback to Network
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

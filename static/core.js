@@ -913,7 +913,17 @@ function addCheckoutItem() {
 
 function updateCheckoutTotals() {
     const subtotal = checkoutItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const taxInput = document.getElementById('checkoutTax');
+    const tax = parseFloat(taxInput?.value || 0) || 0;
+    const total = subtotal + tax;
+    
     document.getElementById('checkoutSubtotal').textContent = formatCurrency(subtotal);
+    
+    // Update total field automatically
+    const totalInput = document.getElementById('checkoutTotal');
+    if (totalInput) {
+        totalInput.value = total.toFixed(2);
+    }
 
     // Update item count
     document.getElementById('checkoutItemCount').textContent = checkoutItems.length;
@@ -980,3 +990,4 @@ window.clearReceiptPreview = clearReceiptPreview;
 window.addCheckoutItem = addCheckoutItem;
 window.updateCheckoutItem = updateCheckoutItem;
 window.removeCheckoutItem = removeCheckoutItem;
+window.updateCheckoutTotals = updateCheckoutTotals;

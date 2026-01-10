@@ -586,7 +586,10 @@ IMPORTANT RULES:
 4. For item price, use the unit price not line total
 5. If information is unclear or not visible, use null
 6. Return ONLY valid JSON, no markdown or extra text
-7. Be thorough - extract ALL items visible on the receipt"""
+7. Be thorough - extract ALL items visible on the receipt
+8. GROUP IDENTICAL ITEMS: If the same item appears multiple times (e.g., "LidlPlus Rabatt" appears 4 times), 
+   combine them into a single item with the total quantity (e.g., quantity: 4) and the unit price
+9. Use exact item names as they appear on the receipt - do not modify or abbreviate names"""
         
         # Use Gemini 2.0 Flash model
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
@@ -603,15 +606,36 @@ IMPORTANT RULES:
         
         result = json.loads(response_text)
         
-        # Process items
-        items = []
+        # Process items and group duplicates
+        items_dict = {}
         if result.get('items'):
             for item in result['items']:
-                items.append({
-                    'name': item.get('name', 'Unknown Item'),
-                    'quantity': int(item.get('quantity', 1)) if item.get('quantity') else 1,
-                    'price': float(item.get('price', 0)) if item.get('price') else 0
-                })
+                name = item.get('name', 'Unknown Item').strip()
+                quantity = int(item.get('quantity', 1)) if item.get('quantity') else 1
+                price = float(item.get('price', 0)) if item.get('price') else 0
+                
+                # Normalize name for grouping (case-insensitive, trim whitespace)
+                name_key = name.lower().strip()
+                
+                # If item already exists, combine quantities
+                if name_key in items_dict:
+                    items_dict[name_key]['quantity'] += quantity
+                    # Use the average price if prices differ slightly, or keep the first price
+                    if abs(items_dict[name_key]['price'] - price) > 0.01:
+                        # If prices differ significantly, use weighted average
+                        total_qty = items_dict[name_key]['quantity']
+                        old_total = items_dict[name_key]['price'] * (total_qty - quantity)
+                        new_total = price * quantity
+                        items_dict[name_key]['price'] = (old_total + new_total) / total_qty
+                else:
+                    items_dict[name_key] = {
+                        'name': name,  # Keep original casing
+                        'quantity': quantity,
+                        'price': price
+                    }
+        
+        # Convert dict back to list
+        items = list(items_dict.values())
         
         return jsonify({
             'success': True,

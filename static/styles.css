@@ -511,7 +511,7 @@ body::before {
     gap: 1rem;
 }
 
-/* On mobile, make it vertical like dashboard */
+/* Mobile override - MUST be after desktop rule */
 @media (max-width: 768px) {
     .recurring-stats-grid {
         grid-template-columns: 1fr !important;
@@ -1398,12 +1398,28 @@ body::before {
     }
 
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 
-    /* Recurring stats should also be vertical on mobile */
-    .recurring-stats-grid {
+    /* Recurring stats should also be vertical on mobile - override inline styles */
+    .recurring-stats-grid,
+    div.stats-grid.recurring-stats-grid,
+    div[class*="stats-grid"][class*="recurring"] {
         grid-template-columns: 1fr !important;
+        display: grid !important;
+    }
+    
+    /* Force all grid containers with 3 columns to be 1 column on mobile */
+    div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Very specific override for recurring stats - must override inline styles */
+    .container .stats-grid.recurring-stats-grid,
+    .container div.stats-grid.recurring-stats-grid,
+    div.stats-grid.recurring-stats-grid[style] {
+        grid-template-columns: 1fr !important;
+        display: grid !important;
     }
 
 

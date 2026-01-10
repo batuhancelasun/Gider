@@ -1,7 +1,12 @@
-const CACHE_NAME = 'gider-v7';
+const CACHE_NAME = 'gider-v8';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/recurring.html',
+  '/table.html',
+  '/analytics.html',
+  '/settings.html',
+  '/items.html',
   '/styles.css',
   '/app.js',
   '/core.js',

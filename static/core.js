@@ -671,7 +671,7 @@ let receiptImageData = null;
 let scannedData = null;
 let checkoutItems = [];
 
-function openScannerModal() {
+export function openScannerModal() {
     const modal = document.getElementById('scannerModal');
     if (!modal) return;
 
@@ -684,7 +684,7 @@ function openScannerModal() {
     });
 }
 
-function closeScannerModal() {
+export function closeScannerModal() {
     const modal = document.getElementById('scannerModal');
     if (!modal) return;
 
@@ -932,3 +932,9 @@ async function confirmCheckout() {
         showToast('error', 'Error', 'Failed to save transaction');
     }
 }
+
+// Expose scanner modal functions to window for inline handlers
+window.openScannerModal = openScannerModal;
+window.closeScannerModal = closeScannerModal;
+window.scanReceipt = scanReceipt;
+window.confirmCheckout = confirmCheckout;

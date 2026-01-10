@@ -1,6 +1,6 @@
 import { auth } from '../auth.js';
 import {
-    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon
+    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon, loadCategories as loadCategoriesFromCore
 } from '../core.js';
 
 // Import categoryIcons from icons.js - we'll get it from window or define it here
@@ -341,12 +341,8 @@ async function handleGeminiSubmit(e) {
 // -- Categories --
 
 async function loadCategories() {
-    try {
-        const response = await fetch('/api/categories', { headers: auth.getHeaders() });
-        allCategories = await response.json();
-    } catch (error) {
-        console.error('Failed to load categories:', error);
-    }
+    // Use the loadCategories function from core.js to keep everything in sync
+    await loadCategoriesFromCore();
 }
 
 function renderCategoriesList() {

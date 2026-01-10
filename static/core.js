@@ -17,6 +17,7 @@ export let selectedCategoryIcon = 'other';
 
 export async function initApp() {
     await loadSettings();
+    await loadCategories(); // Load categories on app initialization
     applyTheme(settings?.theme || 'dark');
     registerServiceWorker();
     initIcons();
@@ -488,10 +489,13 @@ export function setTransactionType(type) {
 // LOAD CATEGORIES
 // ============================================
 
-async function loadCategories() {
+export async function loadCategories() {
     try {
         const response = await fetch('/api/categories', { headers: auth.getHeaders() });
-        allCategories = await response.json();
+        const json = await response.json();
+        // Update the allCategories array using mutable array methods
+        allCategories.length = 0;
+        allCategories.push(...json);
         return allCategories;
     } catch (error) {
         console.error('Failed to load categories:', error);
@@ -501,7 +505,18 @@ async function loadCategories() {
 
 function loadCategorySelect() {
     const select = document.getElementById('category');
-    if (!select || !allCategories.length) return;
+    if (!select) return;
+    
+    // If categories aren't loaded yet, try to load them
+    if (!allCategories.length) {
+        loadCategories().then(() => {
+            // Retry after loading
+            if (allCategories.length) {
+                loadCategorySelect();
+            }
+        });
+        return;
+    }
 
     const currentValue = select.value;
     const type = currentTransactionType;

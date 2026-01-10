@@ -2,10 +2,8 @@ import { auth } from '../auth.js';
 import {
     formatCurrency, formatDate, getIcon, getCategoryIcon, showToast,
     openModal, closeModal, openDetailsModal, closeDetailsModal, saveTransaction,
-    setTransactionType // Need this too for the modal toggle
+    setTransactionType, allTransactions // Import allTransactions from core
 } from '../core.js';
-
-let allTransactions = [];
 let expensesPieChart = null;
 let incomePieChart = null;
 
@@ -201,6 +199,7 @@ export const TransactionsView = {
         window.filterExpenses = filterExpenses;
         window.filterIncome = filterIncome;
         window.showDeleteModal = showDeleteModal;
+        window.renderAllTabs = renderAllTabs;
 
         // Core Modal functions
         window.openModal = openModal;
@@ -220,7 +219,10 @@ export const TransactionsView = {
 async function loadTransactions() {
     try {
         const response = await fetch('/api/transactions', { headers: auth.getHeaders() });
-        allTransactions = await response.json();
+        const json = await response.json();
+        // Update the allTransactions array from core.js
+        allTransactions.length = 0;
+        allTransactions.push(...json);
     } catch (error) {
         console.error('Failed to load transactions:', error);
         showToast('error', 'Error', 'Failed to load transactions');

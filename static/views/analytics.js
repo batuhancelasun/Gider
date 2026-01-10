@@ -1,9 +1,7 @@
 import { auth } from '../auth.js';
 import {
-    formatCurrency, getIcon, getCategoryIcon
+    formatCurrency, getIcon, getCategoryIcon, allTransactions
 } from '../core.js';
-
-let allTransactions = [];
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let selectedYear = currentYear;
@@ -228,6 +226,7 @@ export const AnalyticsView = {
         window.switchAnalyticsTab = switchAnalyticsTab;
         window.changeMonth = changeMonth;
         window.changeYear = changeYear;
+        window.updateAnalytics = updateAnalytics;
 
         updateMonthlyView();
         updateYearlyView();
@@ -239,11 +238,20 @@ export const AnalyticsView = {
 async function loadTransactions() {
     try {
         const response = await fetch('/api/transactions', { headers: auth.getHeaders() });
-        allTransactions = await response.json();
+        const json = await response.json();
+        // Update the allTransactions array from core.js
+        allTransactions.length = 0;
+        allTransactions.push(...json);
     } catch (error) {
         console.error('Failed to load transactions:', error);
         showToast('error', 'Error', 'Failed to load data');
     }
+}
+
+async function updateAnalytics() {
+    await loadTransactions();
+    updateMonthlyView();
+    updateYearlyView();
 }
 
 // -- Tab Logic --

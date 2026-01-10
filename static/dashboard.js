@@ -28,9 +28,13 @@ export async function initDashboard() {
     // Solution: core.js should export a function `setAllTransactions(data)`.
     await loadTransactions();
     updateDashboard();
+    
+    // Expose functions to window for use by core.js after saving transactions
+    window.loadTransactions = loadTransactions;
+    window.updateDashboard = updateDashboard;
 }
 
-async function loadTransactions() {
+export async function loadTransactions() {
     try {
         const response = await fetch('/api/transactions', { headers: auth.getHeaders() });
         // We need to update the array in core.js

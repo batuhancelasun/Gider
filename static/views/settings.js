@@ -1,16 +1,19 @@
 import { auth } from '../auth.js';
 import {
-    getIcon, showToast, applyTheme
+    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon
 } from '../core.js';
 
-let allCategories = [];
-let categoryIcons = [
-    'shopping', 'food', 'transport', 'bills', 'entertainment',
-    'health', 'education', 'gift', 'income', 'investment',
-    'home', 'pet', 'travel', 'tech', 'other',
-    'coffee', 'gym', 'book', 'game'
+// Import categoryIcons from icons.js - we'll get it from window or define it here
+// The categoryIcons array is defined in icons.js
+const categoryIcons = [
+    'shopping', 'food', 'transport', 'home', 'utilities', 'entertainment',
+    'health', 'education', 'travel', 'salary', 'investment', 'gift',
+    'bills', 'insurance', 'subscriptions', 'savings', 'freelance', 'rent',
+    'phone', 'clothing', 'pets', 'fitness', 'creditCard', 'wallet', 'other', 'tag'
 ];
-let selectedCategoryIcon = 'other';
+
+// Use a local variable that syncs with core.js
+let selectedCategoryIcon = coreSelectedIcon || 'other';
 let editingCategoryId = null;
 let settings = {};
 
@@ -409,16 +412,27 @@ function renderIconPicker() {
     const picker = document.getElementById('iconPicker');
     if (!picker) return;
 
-    picker.innerHTML = categoryIcons.map(iconName => `
+    // window.getIcon should be available from icons.js which loads before app.js
+    // If not available, use the imported getIcon function
+    const getIconFunc = window.getIcon || getIcon;
+    
+    picker.innerHTML = categoryIcons.map(iconName => {
+        const iconHtml = getIconFunc(iconName, 18);
+        return `
         <button type="button" class="icon-option ${selectedCategoryIcon === iconName ? 'selected' : ''}" 
                 onclick="window.selectIcon('${iconName}')" title="${iconName}">
-            ${getIcon(iconName, 18)}
+            ${iconHtml}
         </button>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function selectIcon(iconName) {
     selectedCategoryIcon = iconName;
+    // Update core.js selectedCategoryIcon if possible
+    if (window.selectedCategoryIcon !== undefined) {
+        window.selectedCategoryIcon = iconName;
+    }
     renderIconPicker();
 }
 

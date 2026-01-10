@@ -535,6 +535,39 @@ export function getCategoryIcon(categoryName) {
 }
 
 // ============================================
+// REFRESH TRANSACTIONS
+// ============================================
+
+async function refreshTransactions() {
+    try {
+        const response = await fetch('/api/transactions', { headers: auth.getHeaders() });
+        if (!response.ok) throw new Error('Failed to load transactions');
+        
+        const json = await response.json();
+        // Update the allTransactions array
+        allTransactions.length = 0;
+        allTransactions.push(...json);
+        
+        // Call view-specific refresh functions if they exist
+        if (typeof window.updateDashboard === 'function') {
+            window.updateDashboard();
+        }
+        if (typeof window.filterTransactions === 'function') {
+            window.filterTransactions();
+        }
+        if (typeof window.renderAllTabs === 'function') {
+            window.renderAllTabs();
+        }
+        // Check for analytics refresh
+        if (typeof window.updateAnalytics === 'function') {
+            window.updateAnalytics();
+        }
+    } catch (error) {
+        console.error('Failed to refresh transactions:', error);
+    }
+}
+
+// ============================================
 // SAVE TRANSACTION
 // ============================================
 
@@ -580,15 +613,8 @@ export async function saveTransaction() {
             closeModal();
             showToast('success', id ? 'Updated' : 'Added', `${name} - ${formatCurrency(Math.abs(amount))}`);
 
-            if (typeof loadTransactions === 'function') {
-                await loadTransactions();
-            }
-            if (typeof updateDashboard === 'function') {
-                updateDashboard();
-            }
-            if (typeof filterTransactions === 'function') {
-                filterTransactions();
-            }
+            // Refresh transactions and update all views
+            await refreshTransactions();
         } else {
             throw new Error('Failed to save');
         }
@@ -918,12 +944,8 @@ async function confirmCheckout() {
             closeScannerModal();
             showToast('success', 'Transaction Added', `${storeName} - ${formatCurrency(total)}`);
 
-            if (typeof loadTransactions === 'function') {
-                await loadTransactions();
-            }
-            if (typeof updateDashboard === 'function') {
-                updateDashboard();
-            }
+            // Refresh transactions and update all views
+            await refreshTransactions();
         } else {
             throw new Error('Failed to save');
         }

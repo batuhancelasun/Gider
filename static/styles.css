@@ -1758,17 +1758,18 @@ body::before {
 
     .mobile-fab {
         display: flex !important;
-        position: relative;
-        bottom: auto;
-        right: auto;
-        width: 48px;
-        height: 48px;
-        min-width: 48px;
-        min-height: 48px;
-        max-width: 48px;
-        max-height: 48px;
+        position: fixed;
+        bottom: calc(5rem + env(safe-area-inset-bottom));
+        left: 50%;
+        transform: translateX(-50%);
+        width: 56px;
+        height: 56px;
+        min-width: 56px;
+        min-height: 56px;
+        max-width: 56px;
+        max-height: 56px;
         margin: 0;
-        transform: translateY(-30%);
+        z-index: 100;
         flex-shrink: 0;
     }
 

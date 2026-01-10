@@ -12,6 +12,12 @@ let editingRecurringId = null;
 
 export const RecurringView = {
     render: async () => {
+        // Detect if mobile - use flex column for vertical, grid for horizontal
+        const isMobile = window.innerWidth < 768;
+        const statsStyle = isMobile
+            ? 'display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;'
+            : 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;';
+
         return `
             <div class="container animate-fade-in">
                 <div class="page-header">
@@ -25,7 +31,7 @@ export const RecurringView = {
                 </div>
 
                 <!-- Stats -->
-                <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                <div style="${statsStyle}">
                     <div class="stat-card expense">
                         <div class="stat-header">
                             <div class="stat-icon" id="monthlyExpenseIcon">${getIcon('trendingDown', 20)}</div>

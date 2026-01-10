@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  gider:
+    image: batubaba619/gider:latest
+    container_name: gider
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - gider-data:/app/data
+    environment:
+      - PORT=8080
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin
+      # Optional: Set your Gemini API key here for receipt scanning
+      # - GEMINI_API_KEY=your_api_key_here
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  gider-data:
+    driver: local

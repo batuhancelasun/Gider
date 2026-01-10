@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Configure your Gider expense tracker settings">
+    
+    <title>Gider - Settings</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <img src="/logo.png" alt="Gider" class="nav-logo">
+                <span class="nav-title">Gider</span>
+            </a>
+            
+            <div class="nav-center">
+                <a href="/" class="nav-link" id="nav-dashboard"></a>
+                <a href="/table" class="nav-link" id="nav-transactions"></a>
+                <a href="/analytics" class="nav-link" id="nav-analytics"></a>
+                <a href="/items" class="nav-link" id="nav-items"></a>
+                <a href="/recurring" class="nav-link" id="nav-recurring"></a>
+                <a href="/settings" class="nav-link active" id="nav-settings"></a>
+            </div>
+            
+            <div class="nav-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="icon-sun"></span>
+                    <span class="icon-moon"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header animate-fade-in">
+            <div>
+                <h1 class="page-title">Settings</h1>
+                <p class="page-subtitle">Customize your expense tracker</p>
+            </div>
+        </div>
+
+        <div class="settings-grid">
+            <!-- General Settings -->
+            <div class="settings-card animate-slide-up">
+                <div class="settings-card-header">
+                    <div class="settings-card-icon" id="generalIcon"></div>
+                    <h3 class="settings-card-title">General Settings</h3>
+                </div>
+                <div class="settings-card-body">
+                    <form id="settingsForm">
+                        <div class="form-group">
+                            <label class="form-label" for="currencySymbol">Currency Symbol</label>
+                            <input type="text" id="currencySymbol" class="form-input" maxlength="5" placeholder="$">
+                            <p class="form-hint">Symbol displayed before amounts</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="startDate">Budget Start Day</label>
+                            <input type="number" id="startDate" class="form-input" min="1" max="31" value="1">
+                            <p class="form-hint">Day of month when your budget cycle starts</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="theme">Theme</label>
+                            <select id="theme" class="form-select">
+                                <option value="dark">Dark</option>
+                                <option value="light">Light</option>
+                                <option value="auto">Auto (System)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;" id="saveSettingsBtn"></button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Receipt Scanner Settings -->
+            <div class="settings-card animate-slide-up">
+                <div class="settings-card-header">
+                    <div class="settings-card-icon" id="scannerIcon"></div>
+                    <h3 class="settings-card-title">Receipt Scanner</h3>
+                </div>
+                <div class="settings-card-body">
+                    <form id="geminiForm">
+                        <div class="form-group">
+                            <label class="form-label" for="geminiApiKey">Google Gemini API Key</label>
+                            <input type="password" id="geminiApiKey" class="form-input" placeholder="Enter your API key">
+                            <p class="form-hint">Required for receipt scanning. Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--primary);">Google AI Studio</a></p>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;" id="saveGeminiBtn"></button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="settings-card animate-slide-up">
+                <div class="settings-card-header">
+                    <div class="settings-card-icon" id="categoriesIcon"></div>
+                    <h3 class="settings-card-title">Categories</h3>
+                </div>
+                <div class="settings-card-body">
+                    <div id="categoriesList" style="max-height: 350px; overflow-y: auto; margin-bottom: 1rem;"></div>
+                    <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="openCategoryModal()" id="addCategoryBtn"></button>
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="settings-card animate-slide-up">
+                <div class="settings-card-header">
+                    <div class="settings-card-icon" id="dataIcon"></div>
+                    <h3 class="settings-card-title">Data Management</h3>
+                </div>
+                <div class="settings-card-body">
+                    <div class="form-group">
+                        <label class="form-label">Export Data</label>
+                        <p class="form-hint mb-1">Download all your transactions as CSV</p>
+                        <button type="button" class="btn btn-secondary" onclick="exportData()" style="width: 100%;" id="exportBtn"></button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Import Data</label>
+                        <p class="form-hint mb-1">Import transactions from CSV file</p>
+                        <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importData(event)">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('importFile').click()" style="width: 100%;" id="importBtn"></button>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                        <label class="form-label text-danger">Danger Zone</label>
+                        <p class="form-hint mb-1">Clear all transactions (cannot be undone)</p>
+                        <button type="button" class="btn btn-danger" onclick="confirmClearData()" style="width: 100%;" id="clearBtn"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About -->
+            <div class="settings-card animate-slide-up">
+                <div class="settings-card-header">
+                    <div class="settings-card-icon" id="aboutIcon"></div>
+                    <h3 class="settings-card-title">About</h3>
+                </div>
+                <div class="settings-card-body">
+                    <div style="text-align: center; padding: 1rem;">
+                        <img src="/logo.png" alt="Gider" style="width: 64px; height: 64px; margin-bottom: 1rem;">
+                        <h4 style="margin-bottom: 0.25rem;">Gider</h4>
+                        <p class="text-muted" style="font-size: 0.85rem;">Simple Expense Tracker</p>
+                        <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.75rem;">
+                            A self-hosted expense and income tracking application.
+                        </p>
+                        <a href="https://github.com/batuhancelasun/Gider" target="_blank" class="btn btn-ghost mt-2" id="githubBtn"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Category Modal -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="categoryModalTitle">Add Category</h2>
+                <button class="modal-close" onclick="closeCategoryModal()" id="categoryModalClose"></button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId">
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="categoryName">Name</label>
+                        <input type="text" id="categoryName" class="form-input" placeholder="Category name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="categoryType">Type</label>
+                        <select id="categoryType" class="form-select">
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Icon</label>
+                        <div class="icon-picker" id="iconPicker"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveCategory()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Data Confirmation Modal -->
+    <div class="modal-overlay" id="clearDataModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Clear All Data</h2>
+                <button class="modal-close" onclick="closeClearDataModal()" id="clearModalClose"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="warningIcon" style="margin-bottom: 1rem;"></div>
+                <p><strong>Are you sure?</strong></p>
+                <p class="text-muted mt-1">This will permanently delete all your transactions. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="closeClearDataModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="clearAllData()">Delete Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/icons.js"></script>
+    <script src="/app.js"></script>
+    <script src="/settings.js"></script>
+</body>
+</html>

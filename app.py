@@ -1,0 +1,685 @@
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+import json
+import os
+from datetime import datetime, timedelta
+from pathlib import Path
+import uuid
+import base64
+import re
+import jwt
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+
+app = Flask(__name__, static_folder='static')
+CORS(app)
+
+DATA_DIR = Path('./data')
+USERS_FILE = DATA_DIR / 'users.json'
+
+# Configuration
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-this')
+
+# Default categories with icons
+DEFAULT_CATEGORIES = [
+    {'id': '1', 'name': 'Food & Dining', 'icon': 'food', 'type': 'expense'},
+    {'id': '2', 'name': 'Transportation', 'icon': 'transport', 'type': 'expense'},
+    {'id': '3', 'name': 'Shopping', 'icon': 'shopping', 'type': 'expense'},
+    {'id': '4', 'name': 'Bills & Utilities', 'icon': 'utilities', 'type': 'expense'},
+    {'id': '5', 'name': 'Entertainment', 'icon': 'entertainment', 'type': 'expense'},
+    {'id': '6', 'name': 'Health', 'icon': 'health', 'type': 'expense'},
+    {'id': '7', 'name': 'Education', 'icon': 'education', 'type': 'expense'},
+    {'id': '8', 'name': 'Travel', 'icon': 'travel', 'type': 'expense'},
+    {'id': '9', 'name': 'Rent', 'icon': 'rent', 'type': 'expense'},
+    {'id': '10', 'name': 'Insurance', 'icon': 'insurance', 'type': 'expense'},
+    {'id': '11', 'name': 'Subscriptions', 'icon': 'subscriptions', 'type': 'expense'},
+    {'id': '12', 'name': 'Clothing', 'icon': 'clothing', 'type': 'expense'},
+    {'id': '13', 'name': 'Salary', 'icon': 'salary', 'type': 'income'},
+    {'id': '14', 'name': 'Freelance', 'icon': 'freelance', 'type': 'income'},
+    {'id': '15', 'name': 'Investment', 'icon': 'investment', 'type': 'income'},
+    {'id': '16', 'name': 'Gift', 'icon': 'gift', 'type': 'income'},
+    {'id': '17', 'name': 'Savings', 'icon': 'savings', 'type': 'income'},
+    {'id': '18', 'name': 'Other', 'icon': 'other', 'type': 'both'}
+]
+
+def ensure_data_dir():
+    """Create data directory if it doesn't exist"""
+    DATA_DIR.mkdir(exist_ok=True)
+
+# --- User Management ---
+
+def load_users():
+    ensure_data_dir()
+    if not USERS_FILE.exists():
+        return {}
+    with open(USERS_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_users(users):
+    ensure_data_dir()
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, indent=2)
+
+def get_user_data_file(user_id):
+    return DATA_DIR / f'data_{user_id}.json'
+
+# --- Auth Decorator ---
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            if auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+        
+        if not token:
+            return jsonify({'error': 'Token is missing'}), 401
+        
+        try:
+            data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+            current_user_id = data['user_id']
+        except:
+            return jsonify({'error': 'Token is invalid'}), 401
+            
+        return f(current_user_id, *args, **kwargs)
+    return decorated
+
+# --- Data Management ---
+
+def load_data(user_id):
+    """Load data from JSON file for specific user"""
+    ensure_data_dir()
+    user_file = get_user_data_file(user_id)
+    
+    if not user_file.exists():
+        # Initialize new user data
+        return {
+            'transactions': [],
+            'recurring_transactions': [],
+            'categories': DEFAULT_CATEGORIES.copy(),
+            'items': [],
+            'settings': {
+                'currency_symbol': '$',
+                'start_date': 1,
+                'theme': 'dark',
+                'gemini_api_key': ''
+            }
+        }
+    
+    with open(user_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    # Ensure structure (migrations)
+    if not data.get('categories'):
+        data['categories'] = DEFAULT_CATEGORIES.copy()
+    if 'items' not in data:
+        data['items'] = []
+    
+    return data
+
+def save_data(user_id, data):
+    """Save data to JSON file for specific user"""
+    ensure_data_dir()
+    user_file = get_user_data_file(user_id)
+    with open(user_file, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, default=str)
+
+def process_recurring_transactions(user_id):
+    """Check and create transactions for due recurring items"""
+    data = load_data(user_id)
+    today = datetime.now().date()
+    created = []
+    
+    for rt in data['recurring_transactions']:
+        if not rt.get('is_active', True):
+            continue
+            
+        last_processed = rt.get('last_processed')
+        if last_processed:
+            last_date = datetime.fromisoformat(last_processed.replace('Z', '')).date()
+        else:
+            last_date = None
+        
+        next_date = calculate_next_date(rt, last_date)
+        
+        while next_date and next_date <= today:
+            # Create transaction
+            transaction = {
+                'id': str(uuid.uuid4()),
+                'name': rt['name'],
+                'amount': rt['amount'],
+                'category': rt['category'],
+                'is_income': rt.get('is_income', False),
+                'date': next_date.isoformat(),
+                'description': f"Recurring: {rt.get('description', '')}",
+                'recurring_id': rt['id']
+            }
+            data['transactions'].append(transaction)
+            created.append(transaction)
+            
+            # Update last processed
+            rt['last_processed'] = next_date.isoformat()
+            last_date = next_date
+            next_date = calculate_next_date(rt, last_date)
+    
+    if created:
+        save_data(user_id, data)
+    
+    return created
+
+def calculate_next_date(rt, last_date):
+    """Calculate next occurrence date for recurring transaction"""
+    frequency = rt.get('frequency', 'monthly')
+    start_date = datetime.fromisoformat(rt.get('start_date', datetime.now().isoformat()).replace('Z', '')).date()
+    end_date = rt.get('end_date')
+    if end_date:
+        end_date = datetime.fromisoformat(end_date.replace('Z', '')).date()
+    
+    if last_date is None:
+        next_date = start_date
+    else:
+        if frequency == 'daily':
+            next_date = last_date + timedelta(days=1)
+        elif frequency == 'weekly':
+            next_date = last_date + timedelta(weeks=1)
+        elif frequency == 'biweekly':
+            next_date = last_date + timedelta(weeks=2)
+        elif frequency == 'monthly':
+            # Add one month
+            month = last_date.month + 1
+            year = last_date.year
+            if month > 12:
+                month = 1
+                year += 1
+            day = min(last_date.day, [31, 29 if year % 4 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+            next_date = last_date.replace(year=year, month=month, day=day)
+        elif frequency == 'yearly':
+            next_date = last_date.replace(year=last_date.year + 1)
+        else:
+            return None
+    
+    if end_date and next_date > end_date:
+        return None
+    
+    return next_date
+
+# --- Auth Routes ---
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+        
+    users = load_users()
+    if username in users:
+        return jsonify({'error': 'Username already exists'}), 400
+        
+    user_id = str(uuid.uuid4())
+    users[username] = {
+        'id': user_id,
+        'password': generate_password_hash(password)
+    }
+    save_users(users)
+    
+    # If this is the first user or we want to migrate old data:
+    # Check if old data.json exists and not assigned
+    old_data_file = DATA_DIR / 'data.json'
+    new_data_file = get_user_data_file(user_id)
+    if old_data_file.exists() and not new_data_file.exists():
+        # Simple migration: rename/copy old data to new user
+        # In a real multi-user env, we might only do this for the *first* registered user
+        # For now, let's just do it if the user doesn't have data yet.
+        # But wait, if 2nd user registers, they shouldn't inherit the data.
+        # Let's verify if any user exists at all initially.
+        if len(users) == 1:
+             import shutil
+             shutil.copy(old_data_file, new_data_file)
+    
+    return jsonify({'message': 'User created successfully'}), 201
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    users = load_users()
+    user = users.get(username)
+    
+    if not user or not check_password_hash(user['password'], password):
+        return jsonify({'error': 'Invalid credentials'}), 401
+        
+    token = jwt.encode({
+        'user_id': user['id'],
+        'exp': datetime.utcnow() + timedelta(days=30)
+    }, JWT_SECRET_KEY, algorithm='HS256')
+    
+    return jsonify({
+        'token': token,
+        'user': {'username': username, 'id': user['id']}
+    })
+
+@app.route('/api/auth/me', methods=['GET'])
+@login_required
+def get_current_user(current_user_id):
+    # Find username from id (inefficient but simple)
+    users = load_users()
+    for username, data in users.items():
+        if data['id'] == current_user_id:
+            return jsonify({'username': username, 'id': current_user_id})
+    return jsonify({'error': 'User not found'}), 404
+
+# --- API Routes ---
+
+@app.route('/api/transactions', methods=['GET'])
+@login_required
+def get_transactions(current_user_id):
+    """Get all transactions"""
+    process_recurring_transactions(current_user_id)
+    data = load_data(current_user_id)
+    return jsonify(data['transactions'])
+
+@app.route('/api/transactions', methods=['POST'])
+@login_required
+def create_transaction(current_user_id):
+    """Create a new transaction"""
+    data = load_data(current_user_id)
+    transaction = request.json
+    
+    if 'id' not in transaction or not transaction['id']:
+        transaction['id'] = str(uuid.uuid4())
+    
+    if 'date' not in transaction or not transaction['date']:
+        transaction['date'] = datetime.utcnow().isoformat() + 'Z'
+    
+    # Handle items if present
+    if 'items' in transaction and transaction['items']:
+        for item in transaction['items']:
+            item_record = {
+                'id': str(uuid.uuid4()),
+                'name': item.get('name', ''),
+                'quantity': item.get('quantity', 1),
+                'price': item.get('price', 0),
+                'transaction_id': transaction['id'],
+                'store': transaction.get('name', ''),
+                'category': transaction.get('category', ''),
+                'date': transaction['date']
+            }
+            data['items'].append(item_record)
+    
+    data['transactions'].append(transaction)
+    save_data(current_user_id, data)
+    return jsonify(transaction), 201
+
+@app.route('/api/transactions/<transaction_id>', methods=['GET'])
+@login_required
+def get_transaction(current_user_id, transaction_id):
+    """Get a specific transaction"""
+    data = load_data(current_user_id)
+    for transaction in data['transactions']:
+        if transaction['id'] == transaction_id:
+            return jsonify(transaction)
+    return jsonify({'error': 'Transaction not found'}), 404
+
+@app.route('/api/transactions/<transaction_id>', methods=['PUT'])
+@login_required
+def update_transaction(current_user_id, transaction_id):
+    """Update a transaction"""
+    data = load_data(current_user_id)
+    updated_transaction = request.json
+    updated_transaction['id'] = transaction_id
+    
+    for i, transaction in enumerate(data['transactions']):
+        if transaction['id'] == transaction_id:
+            data['transactions'][i] = updated_transaction
+            save_data(current_user_id, data)
+            return jsonify(updated_transaction)
+    
+    return jsonify({'error': 'Transaction not found'}), 404
+
+@app.route('/api/transactions/<transaction_id>', methods=['DELETE'])
+@login_required
+def delete_transaction(current_user_id, transaction_id):
+    """Delete a transaction"""
+    data = load_data(current_user_id)
+    data['transactions'] = [t for t in data['transactions'] if t['id'] != transaction_id]
+    # Also delete associated items
+    data['items'] = [i for i in data['items'] if i.get('transaction_id') != transaction_id]
+    save_data(current_user_id, data)
+    return '', 204
+
+@app.route('/api/recurring', methods=['GET'])
+@login_required
+def get_recurring_transactions(current_user_id):
+    """Get all recurring transactions"""
+    data = load_data(current_user_id)
+    return jsonify(data['recurring_transactions'])
+
+@app.route('/api/recurring', methods=['POST'])
+@login_required
+def create_recurring_transaction(current_user_id):
+    """Create a new recurring transaction"""
+    data = load_data(current_user_id)
+    rt = request.json
+    
+    if 'id' not in rt or not rt['id']:
+        rt['id'] = str(uuid.uuid4())
+    
+    if 'is_active' not in rt:
+        rt['is_active'] = True
+    
+    data['recurring_transactions'].append(rt)
+    save_data(current_user_id, data)
+    return jsonify(rt), 201
+
+@app.route('/api/recurring/<transaction_id>', methods=['PUT'])
+@login_required
+def update_recurring_transaction(current_user_id, transaction_id):
+    """Update a recurring transaction"""
+    data = load_data(current_user_id)
+    updated_rt = request.json
+    updated_rt['id'] = transaction_id
+    
+    for i, rt in enumerate(data['recurring_transactions']):
+        if rt['id'] == transaction_id:
+            data['recurring_transactions'][i] = updated_rt
+            save_data(current_user_id, data)
+            return jsonify(updated_rt)
+    
+    return jsonify({'error': 'Recurring transaction not found'}), 404
+
+@app.route('/api/recurring/<transaction_id>', methods=['DELETE'])
+@login_required
+def delete_recurring_transaction(current_user_id, transaction_id):
+    """Delete a recurring transaction"""
+    data = load_data(current_user_id)
+    data['recurring_transactions'] = [rt for rt in data['recurring_transactions'] if rt['id'] != transaction_id]
+    save_data(current_user_id, data)
+    return '', 204
+
+# Items API
+@app.route('/api/items', methods=['GET'])
+@login_required
+def get_items(current_user_id):
+    """Get all items"""
+    data = load_data(current_user_id)
+    return jsonify(data.get('items', []))
+
+@app.route('/api/items/stats', methods=['GET'])
+@login_required
+def get_item_stats(current_user_id):
+    """Get item statistics"""
+    data = load_data(current_user_id)
+    items = data.get('items', [])
+    
+    # Calculate stats
+    item_counts = {}
+    store_counts = {}
+    
+    for item in items:
+        name = item.get('name', 'Unknown').lower().strip()
+        qty = item.get('quantity', 1)
+        price = item.get('price', 0)
+        store = item.get('store', 'Unknown')
+        
+        # Item frequency
+        if name not in item_counts:
+            item_counts[name] = {'count': 0, 'total_qty': 0, 'total_spent': 0, 'name': item.get('name', 'Unknown')}
+        item_counts[name]['count'] += 1
+        item_counts[name]['total_qty'] += qty
+        item_counts[name]['total_spent'] += price * qty
+        
+        # Store frequency
+        if store not in store_counts:
+            store_counts[store] = 0
+        store_counts[store] += 1
+    
+    # Sort by frequency
+    top_items = sorted(item_counts.values(), key=lambda x: x['total_qty'], reverse=True)[:20]
+    top_stores = sorted(store_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    return jsonify({
+        'total_items': len(items),
+        'unique_items': len(item_counts),
+        'top_items': top_items,
+        'top_stores': [{'name': s[0], 'count': s[1]} for s in top_stores]
+    })
+
+# Category routes
+@app.route('/api/categories', methods=['GET'])
+@login_required
+def get_categories(current_user_id):
+    """Get all categories"""
+    data = load_data(current_user_id)
+    return jsonify(data['categories'])
+
+@app.route('/api/categories', methods=['POST'])
+@login_required
+def create_category(current_user_id):
+    """Create a new category"""
+    data = load_data(current_user_id)
+    category = request.json
+    
+    if 'id' not in category or not category['id']:
+        category['id'] = str(uuid.uuid4())
+    
+    if 'icon' not in category:
+        category['icon'] = 'other'
+    if 'type' not in category:
+        category['type'] = 'both'
+    
+    data['categories'].append(category)
+    save_data(current_user_id, data)
+    return jsonify(category), 201
+
+@app.route('/api/categories/<category_id>', methods=['PUT'])
+@login_required
+def update_category(current_user_id, category_id):
+    """Update a category"""
+    data = load_data(current_user_id)
+    updated_category = request.json
+    updated_category['id'] = category_id
+    
+    for i, category in enumerate(data['categories']):
+        if category['id'] == category_id:
+            data['categories'][i] = updated_category
+            save_data(current_user_id, data)
+            return jsonify(updated_category)
+    
+    return jsonify({'error': 'Category not found'}), 404
+
+@app.route('/api/categories/<category_id>', methods=['DELETE'])
+@login_required
+def delete_category(current_user_id, category_id):
+    """Delete a category"""
+    data = load_data(current_user_id)
+    data['categories'] = [c for c in data['categories'] if c['id'] != category_id]
+    save_data(current_user_id, data)
+    return '', 204
+
+@app.route('/api/settings', methods=['GET'])
+@login_required
+def get_settings(current_user_id):
+    """Get current settings"""
+    data = load_data(current_user_id)
+    return jsonify(data['settings'])
+
+@app.route('/api/settings', methods=['PUT'])
+@login_required
+def update_settings(current_user_id):
+    """Update settings"""
+    data = load_data(current_user_id)
+    data['settings'] = request.json
+    save_data(current_user_id, data)
+    return jsonify(data['settings'])
+
+# Receipt Scanner API
+@app.route('/api/scan-receipt', methods=['POST'])
+@login_required
+def scan_receipt(current_user_id):
+    """Scan receipt image using Google Gemini API"""
+    try:
+        import google.generativeai as genai
+        from PIL import Image
+        import io
+        
+        # Get API key from settings or environment
+        data = load_data(current_user_id)
+        api_key = data['settings'].get('gemini_api_key') or GEMINI_API_KEY
+        
+        if not api_key:
+            return jsonify({'error': 'Gemini API key not configured. Please add it in Settings.'}), 400
+        
+        # Get image data from request
+        if 'image' not in request.json:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        image_data = request.json['image']
+        
+        # Remove data URL prefix if present
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64 image
+        image_bytes = base64.b64decode(image_data)
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        
+        # Get available categories for context
+        categories = data['categories']
+        expense_categories = [c['name'] for c in categories if c['type'] in ['expense', 'both']]
+        
+        # Create detailed prompt for item extraction
+        prompt = f"""Analyze this receipt image and extract ALL information in JSON format:
+{{
+    "store_name": "Name of the store/merchant",
+    "store_address": "Store address if visible",
+    "total": "Total/Grand total amount as a number (e.g., 25.99)",
+    "subtotal": "Subtotal before tax if visible",
+    "tax": "Tax amount if visible",
+    "date": "Date in YYYY-MM-DD format if visible, otherwise null",
+    "time": "Time if visible (HH:MM format)",
+    "payment_method": "Cash, Card, etc. if visible",
+    "items": [
+        {{
+            "name": "Item name",
+            "quantity": 1,
+            "price": 5.99
+        }}
+    ],
+    "category": "Best matching category from: {', '.join(expense_categories)}"
+}}
+
+IMPORTANT RULES:
+1. Extract EVERY line item from the receipt with name, quantity, and individual price
+2. The "total" should be the FINAL/GRAND TOTAL, not subtotals
+3. For quantity, if not specified assume 1
+4. For item price, use the unit price not line total
+5. If information is unclear or not visible, use null
+6. Return ONLY valid JSON, no markdown or extra text
+7. Be thorough - extract ALL items visible on the receipt"""
+        
+        # Use Gemini 2.0 Flash model
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        response = model.generate_content([prompt, image])
+        
+        # Parse response
+        response_text = response.text.strip()
+        
+        # Extract JSON from response (handle markdown code blocks)
+        if '```json' in response_text:
+            response_text = response_text.split('```json')[1].split('```')[0].strip()
+        elif '```' in response_text:
+            response_text = response_text.split('```')[1].split('```')[0].strip()
+        
+        result = json.loads(response_text)
+        
+        # Process items
+        items = []
+        if result.get('items'):
+            for item in result['items']:
+                items.append({
+                    'name': item.get('name', 'Unknown Item'),
+                    'quantity': int(item.get('quantity', 1)) if item.get('quantity') else 1,
+                    'price': float(item.get('price', 0)) if item.get('price') else 0
+                })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'store_name': result.get('store_name') or 'Unknown Store',
+                'store_address': result.get('store_address'),
+                'total': float(result.get('total', 0)) if result.get('total') else 0,
+                'subtotal': float(result.get('subtotal', 0)) if result.get('subtotal') else None,
+                'tax': float(result.get('tax', 0)) if result.get('tax') else None,
+                'date': result.get('date'),
+                'time': result.get('time'),
+                'payment_method': result.get('payment_method'),
+                'category': result.get('category', 'Other'),
+                'items': items,
+                'item_count': len(items)
+            }
+        })
+        
+    except json.JSONDecodeError as e:
+        return jsonify({'error': f'Failed to parse receipt data: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Failed to scan receipt: {str(e)}'}), 500
+
+# Static file serving
+@app.route('/')
+def index():
+    # Serve index.html for all routes (SPA)
+    return send_from_directory('static', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    if '.' in path:
+        # Static files (css, js, images)
+        if os.path.exists(f'static/{path}'):
+            return send_from_directory('static', path)
+    
+    # Everything else goes to index.html for client-side routing
+    return send_from_directory('static', 'index.html')
+
+# --- Admin User Initialization ---
+
+def initialize_admin_user():
+    """Create or update admin user from environment variables"""
+    admin_username = os.environ.get('ADMIN_USERNAME')
+    admin_password = os.environ.get('ADMIN_PASSWORD')
+    
+    if admin_username and admin_password:
+        print(f"Initializing admin user: {admin_username}")
+        users = load_users()
+        
+        # Check if user exists
+        if admin_username not in users:
+            user_id = str(uuid.uuid4())
+            users[admin_username] = {
+                'id': user_id,
+                'password': generate_password_hash(admin_password)
+            }
+            save_users(users)
+            print(f"Admin user '{admin_username}' created successfully.")
+        else:
+            print(f"Admin user '{admin_username}' already exists. Skipping creation.")
+
+# Initialize admin user on startup
+try:
+    initialize_admin_user()
+except Exception as e:
+    print(f"Error initializing admin user: {e}")
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)

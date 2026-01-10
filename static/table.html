@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="View all your transactions - Gider Expense Tracker">
+
+    <title>Gider - Transactions</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="stylesheet" href="/styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <img src="/logo.png" alt="Gider" class="nav-logo">
+                <span class="nav-title">Gider</span>
+            </a>
+
+            <div class="nav-center">
+                <a href="/" class="nav-link" id="nav-dashboard"></a>
+                <a href="/table" class="nav-link active" id="nav-transactions"></a>
+                <a href="/analytics" class="nav-link" id="nav-analytics"></a>
+                <a href="/items" class="nav-link" id="nav-items"></a>
+                <a href="/recurring" class="nav-link" id="nav-recurring"></a>
+                <a href="/settings" class="nav-link" id="nav-settings"></a>
+            </div>
+
+            <div class="nav-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="icon-sun"></span>
+                    <span class="icon-moon"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header animate-fade-in">
+            <div>
+                <h1 class="page-title">Transactions</h1>
+                <p class="page-subtitle">All your income and expenses</p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal()" id="addBtn"></button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="transactionTabs">
+            <button class="tab active" data-tab="all" onclick="switchTab('all')">
+                <span id="tabAllIcon"></span>
+                <span>All</span>
+            </button>
+            <button class="tab" data-tab="expenses" onclick="switchTab('expenses')">
+                <span id="tabExpensesIcon"></span>
+                <span>Expenses</span>
+            </button>
+            <button class="tab" data-tab="income" onclick="switchTab('income')">
+                <span id="tabIncomeIcon"></span>
+                <span>Income</span>
+            </button>
+        </div>
+
+        <!-- All Transactions Tab -->
+        <div class="tab-content active" id="tab-all">
+            <div class="table-card animate-slide-up">
+                <div class="table-header">
+                    <div class="search-box">
+                        <span class="search-icon" id="searchIcon"></span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Search transactions..."
+                            oninput="filterTransactions()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="categoryFilter" class="form-select" style="width: auto; min-width: 150px;"
+                            onchange="filterTransactions()">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted" style="padding: 2rem;">
+                                    <div class="spinner" style="margin: 0 auto;"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expenses Tab -->
+        <div class="tab-content" id="tab-expenses">
+            <div class="chart-grid" style="margin-bottom: 1.5rem;">
+                <div class="chart-card">
+                    <div class="card-header">
+                        <h3 class="card-title" id="expensesPieTitle"></h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="expensesPieChart"></canvas>
+                    </div>
+                </div>
+                <div class="stats-grid" style="grid-template-columns: 1fr; gap: 1rem;">
+                    <div class="stat-card expense">
+                        <div class="stat-header">
+                            <div class="stat-icon" id="totalExpenseIcon"></div>
+                            <span class="stat-label">Total Expenses</span>
+                        </div>
+                        <div class="stat-value" id="expensesTotal">$0.00</div>
+                    </div>
+                    <div class="stat-card expense" style="--danger: #ff8787;">
+                        <div class="stat-header">
+                            <div class="stat-icon" id="avgExpenseIcon"></div>
+                            <span class="stat-label">Average per Transaction</span>
+                        </div>
+                        <div class="stat-value" id="expensesAvg">$0.00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="table-card">
+                <div class="table-header">
+                    <div class="search-box">
+                        <span class="search-icon" id="searchIconExpenses"></span>
+                        <input type="text" id="searchInputExpenses" class="search-input"
+                            placeholder="Search expenses..." oninput="filterExpenses()">
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Income Tab -->
+        <div class="tab-content" id="tab-income">
+            <div class="chart-grid" style="margin-bottom: 1.5rem;">
+                <div class="chart-card">
+                    <div class="card-header">
+                        <h3 class="card-title" id="incomePieTitle"></h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="incomePieChart"></canvas>
+                    </div>
+                </div>
+                <div class="stats-grid" style="grid-template-columns: 1fr; gap: 1rem;">
+                    <div class="stat-card income">
+                        <div class="stat-header">
+                            <div class="stat-icon" id="totalIncomeIcon"></div>
+                            <span class="stat-label">Total Income</span>
+                        </div>
+                        <div class="stat-value" id="incomeTotal">$0.00</div>
+                    </div>
+                    <div class="stat-card income" style="--success: #55efc4;">
+                        <div class="stat-header">
+                            <div class="stat-icon" id="avgIncomeIcon"></div>
+                            <span class="stat-label">Average per Transaction</span>
+                        </div>
+                        <div class="stat-value" id="incomeAvg">$0.00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="table-card">
+                <div class="table-header">
+                    <div class="search-box">
+                        <span class="search-icon" id="searchIconIncome"></span>
+                        <input type="text" id="searchInputIncome" class="search-input" placeholder="Search income..."
+                            oninput="filterIncome()">
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <button class="fab" onclick="openModal()" title="Add Transaction" id="fab"></button>
+
+    <!-- Transaction Modal -->
+    <div class="modal-overlay" id="transactionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Add Transaction</h2>
+                <button class="modal-close" onclick="closeModal()" id="modalClose"></button>
+            </div>
+            <div class="modal-body">
+                <form id="transactionForm">
+                    <input type="hidden" id="transactionId">
+
+                    <div class="type-toggle">
+                        <button type="button" class="type-toggle-btn expense active"
+                            onclick="setTransactionType('expense')" id="expenseBtn"></button>
+                        <button type="button" class="type-toggle-btn income" onclick="setTransactionType('income')"
+                            id="incomeBtn"></button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="name">Name</label>
+                        <input type="text" id="name" class="form-input" placeholder="e.g., Grocery shopping" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="amount">Amount</label>
+                        <input type="number" id="amount" class="form-input" step="0.01" min="0" placeholder="0.00"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="category">Category</label>
+                        <select id="category" class="form-select" required>
+                            <option value="">Select category</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="date">Date</label>
+                        <input type="date" id="date" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="tags">Tags</label>
+                        <input type="text" id="tags" class="form-input"
+                            placeholder="e.g., work, personal (comma-separated)">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="description">Description</label>
+                        <textarea id="description" class="form-textarea" placeholder="Optional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveTransaction()" id="saveBtn"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Details Modal -->
+    <div class="modal-overlay" id="transactionDetailsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Transaction Details</h2>
+                <button class="modal-close" onclick="closeDetailsModal()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="details-content">
+                    <div class="details-header" style="text-align: center; margin-bottom: 2rem;">
+                        <div id="detailsIcon" style="margin-bottom: 1rem; transform: scale(1.5);"></div>
+                        <h3 id="detailsName" style="margin-bottom: 0.5rem; font-size: 1.5rem;"></h3>
+                        <div id="detailsAmount" style="font-size: 2rem; font-weight: 700;"></div>
+                    </div>
+
+                    <div class="details-grid" style="display: grid; gap: 1.5rem;">
+                        <div class="detail-item">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Category</label>
+                            <div id="detailsCategory" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="detail-item">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Date</label>
+                            <div id="detailsDate" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="detail-item">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Type</label>
+                            <div id="detailsType" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="detail-item" id="detailsTagsContainer" style="display: none;">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Tags</label>
+                            <div id="detailsTags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+                        </div>
+
+                        <div class="detail-item" id="detailsItemsContainer" style="display: none;">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Items</label>
+                            <div id="detailsItems" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                        </div>
+
+                        <div class="detail-item" id="detailsDescriptionContainer" style="display: none;">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Description</label>
+                            <div id="detailsDescription"
+                                style="padding: 1rem; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDetailsModal()">Close</button>
+                <button type="button" class="btn btn-primary" id="detailsEditBtn">
+                    <span style="display: flex; align-items: center; gap: 0.5rem;">
+                        Edit Transaction
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Delete Transaction</h2>
+                <button class="modal-close" onclick="closeDeleteModal()" id="deleteModalClose"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="deleteIcon" style="margin-bottom: 1rem;"></div>
+                <p>Are you sure you want to delete this transaction?</p>
+                <p class="text-muted mt-1">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/icons.js"></script>
+    <script src="/app.js"></script>
+    <script src="/table.js"></script>
+</body>
+
+</html>

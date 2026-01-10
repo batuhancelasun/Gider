@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Manage recurring transactions - Gider">
+    
+    <title>Gider - Recurring</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <img src="/logo.png" alt="Gider" class="nav-logo">
+                <span class="nav-title">Gider</span>
+            </a>
+            
+            <div class="nav-center">
+                <a href="/" class="nav-link" id="nav-dashboard"></a>
+                <a href="/table" class="nav-link" id="nav-transactions"></a>
+                <a href="/analytics" class="nav-link" id="nav-analytics"></a>
+                <a href="/items" class="nav-link" id="nav-items"></a>
+                <a href="/recurring" class="nav-link active" id="nav-recurring"></a>
+                <a href="/settings" class="nav-link" id="nav-settings"></a>
+            </div>
+            
+            <div class="nav-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="icon-sun"></span>
+                    <span class="icon-moon"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header animate-fade-in">
+            <div>
+                <h1 class="page-title">Recurring</h1>
+                <p class="page-subtitle">Manage your recurring expenses and income</p>
+            </div>
+            <button class="btn btn-primary" onclick="openRecurringModal()" id="addRecurringBtn"></button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid recurring-stats-grid" style="margin-bottom: 1.5rem;">
+            <div class="stat-card expense animate-slide-up">
+                <div class="stat-header">
+                    <div class="stat-icon" id="monthlyExpenseIcon"></div>
+                    <span class="stat-label">Monthly Expenses</span>
+                </div>
+                <div class="stat-value" id="monthlyExpenses">$0.00</div>
+            </div>
+            <div class="stat-card income animate-slide-up">
+                <div class="stat-header">
+                    <div class="stat-icon" id="monthlyIncomeIcon"></div>
+                    <span class="stat-label">Monthly Income</span>
+                </div>
+                <div class="stat-value" id="monthlyIncome">$0.00</div>
+            </div>
+            <div class="stat-card balance animate-slide-up">
+                <div class="stat-header">
+                    <div class="stat-icon" id="monthlyNetIcon"></div>
+                    <span class="stat-label">Monthly Net</span>
+                </div>
+                <div class="stat-value" id="monthlyNet">$0.00</div>
+            </div>
+        </div>
+
+        <!-- Recurring Expenses -->
+        <div class="card animate-slide-up" style="margin-bottom: 1.5rem;">
+            <div class="card-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+                <h3 class="card-title" id="expensesTitle"></h3>
+            </div>
+            <div id="recurringExpensesList"></div>
+        </div>
+
+        <!-- Recurring Income -->
+        <div class="card animate-slide-up">
+            <div class="card-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+                <h3 class="card-title" id="incomeTitle"></h3>
+            </div>
+            <div id="recurringIncomeList"></div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Recurring Modal -->
+    <div class="modal-overlay" id="recurringModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="recurringModalTitle">Add Recurring</h2>
+                <button class="modal-close" onclick="closeRecurringModal()" id="recurringModalClose"></button>
+            </div>
+            <div class="modal-body">
+                <form id="recurringForm">
+                    <input type="hidden" id="recurringId">
+                    
+                    <!-- Type Toggle -->
+                    <div class="type-toggle" style="margin-bottom: 1rem;">
+                        <button type="button" class="type-toggle-btn expense active" onclick="setRecurringType('expense')">
+                            <span id="recurringExpenseTypeIcon"></span>
+                            <span>Expense</span>
+                        </button>
+                        <button type="button" class="type-toggle-btn income" onclick="setRecurringType('income')">
+                            <span id="recurringIncomeTypeIcon"></span>
+                            <span>Income</span>
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="recurringName">Name *</label>
+                        <input type="text" id="recurringName" class="form-input" placeholder="e.g., Netflix, Rent, Salary" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="recurringAmount">Amount *</label>
+                        <input type="number" id="recurringAmount" class="form-input" step="0.01" min="0" placeholder="0.00" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="recurringCategory">Category *</label>
+                        <select id="recurringCategory" class="form-select" required></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Frequency *</label>
+                        <div class="frequency-select">
+                            <div class="frequency-option" data-freq="daily" onclick="selectFrequency('daily')">Daily</div>
+                            <div class="frequency-option" data-freq="weekly" onclick="selectFrequency('weekly')">Weekly</div>
+                            <div class="frequency-option" data-freq="biweekly" onclick="selectFrequency('biweekly')">Bi-weekly</div>
+                            <div class="frequency-option active" data-freq="monthly" onclick="selectFrequency('monthly')">Monthly</div>
+                            <div class="frequency-option" data-freq="yearly" onclick="selectFrequency('yearly')">Yearly</div>
+                        </div>
+                        <input type="hidden" id="recurringFrequency" value="monthly">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="recurringStartDate">Start Date *</label>
+                        <input type="date" id="recurringStartDate" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="recurringEndDate">End Date (Optional)</label>
+                        <input type="date" id="recurringEndDate" class="form-input">
+                        <p class="form-hint">Leave empty for indefinite</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="recurringDescription">Description</label>
+                        <textarea id="recurringDescription" class="form-textarea" placeholder="Optional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRecurringModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveRecurring()" id="saveRecurringBtn"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteRecurringModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Delete Recurring?</h2>
+                <button class="modal-close" onclick="closeDeleteRecurringModal()" id="deleteRecurringModalClose"></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary);">Are you sure you want to delete this recurring transaction? This won't affect past transactions.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteRecurringModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteRecurring()" id="confirmDeleteRecurringBtn"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/icons.js"></script>
+    <script src="/app.js"></script>
+    <script src="/recurring.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Item tracking and analytics - Gider">
+    
+    <title>Gider - Items</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="stylesheet" href="/styles.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <img src="/logo.png" alt="Gider" class="nav-logo">
+                <span class="nav-title">Gider</span>
+            </a>
+            
+            <div class="nav-center">
+                <a href="/" class="nav-link" id="nav-dashboard"></a>
+                <a href="/table" class="nav-link" id="nav-transactions"></a>
+                <a href="/analytics" class="nav-link" id="nav-analytics"></a>
+                <a href="/items" class="nav-link active" id="nav-items"></a>
+                <a href="/recurring" class="nav-link" id="nav-recurring"></a>
+                <a href="/settings" class="nav-link" id="nav-settings"></a>
+            </div>
+            
+            <div class="nav-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="icon-sun"></span>
+                    <span class="icon-moon"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header animate-fade-in">
+            <div>
+                <h1 class="page-title">Items</h1>
+                <p class="page-subtitle">Track what you buy most</p>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid" style="margin-bottom: 1.5rem;">
+            <div class="stat-card animate-slide-up">
+                <div class="stat-header">
+                    <div class="stat-icon" id="totalItemsIcon"></div>
+                    <span class="stat-label">Total Items</span>
+                </div>
+                <div class="stat-value" id="totalItemsCount">0</div>
+            </div>
+            <div class="stat-card animate-slide-up">
+                <div class="stat-header">
+                    <div class="stat-icon" id="uniqueItemsIcon"></div>
+                    <span class="stat-label">Unique Items</span>
+                </div>
+                <div class="stat-value" id="uniqueItemsCount">0</div>
+            </div>
+            <div class="stat-card animate-slide-up">
+                <div class="stat-header">
+                    <div class="stat-icon" id="topStoreIcon"></div>
+                    <span class="stat-label">Top Store</span>
+                </div>
+                <div class="stat-value" id="topStoreName" style="font-size: 1rem;">-</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-grid" style="margin-bottom: 1.5rem;">
+            <div class="chart-card animate-slide-up">
+                <div class="card-header">
+                    <h3 class="card-title" id="topItemsChartTitle"></h3>
+                </div>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="topItemsChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card animate-slide-up">
+                <div class="card-header">
+                    <h3 class="card-title" id="storesChartTitle"></h3>
+                </div>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="storesChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Items List -->
+        <div class="card animate-slide-up">
+            <div class="card-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+                <h3 class="card-title" id="itemsListTitle"></h3>
+            </div>
+            <div id="itemsList" style="padding: 0;"></div>
+        </div>
+    </main>
+
+    <script src="/icons.js"></script>
+    <script src="/app.js"></script>
+    <script src="/items.js"></script>
+</body>
+</html>
+

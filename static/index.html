@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Track your expenses and income with Gider - a simple, beautiful expense tracker">
+
+    <title>Gider - Expense Tracker</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="stylesheet" href="/styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Desktop Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand" data-link>
+                <img src="/logo.png" alt="Gider" class="nav-logo">
+                <span class="nav-title">Gider</span>
+            </a>
+
+            <div class="nav-center">
+                <a href="/dashboard" class="nav-link active" data-link>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/table" class="nav-link" data-link>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                    </svg>
+                    <span>Transactions</span>
+                </a>
+                <a href="/analytics" class="nav-link" data-link>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="20" x2="12" y2="10" />
+                        <line x1="18" y1="20" x2="18" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="16" />
+                    </svg>
+                    <span>Analytics</span>
+                </a>
+                <a href="/recurring" class="nav-link" data-link>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    </svg>
+                    <span>Recurring</span>
+                </a>
+                <a href="/settings" class="nav-link" data-link>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </a>
+            </div>
+
+            <div class="nav-actions">
+                <button class="theme-toggle" onclick="window.toggleTheme && window.toggleTheme()" title="Toggle theme">
+                    <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main App Container -->
+    <div id="app-container">
+        <!-- Views will be injected here -->
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="/dashboard" class="mobile-tab active" data-link>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="/table" class="mobile-tab" data-link>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+            <span>Trans.</span>
+        </a>
+        <button class="fab" onclick="window.openModal && window.openModal()"
+            style="position: relative; bottom: auto; right: auto; transform: translateY(-30%); width: 48px; height: 48px; margin: 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+        </button>
+        <a href="/analytics" class="mobile-tab" data-link>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="20" x2="12" y2="10" />
+                <line x1="18" y1="20" x2="18" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="16" />
+            </svg>
+            <span>Stats</span>
+        </a>
+        <a href="/settings" class="mobile-tab" data-link>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            <span>Settings</span>
+        </a>
+    </nav>
+
+    <!-- Modals -->
+    <!-- Add Transaction Modal -->
+    <div class="modal-overlay" id="transactionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Add Transaction</h2>
+                <button class="modal-close" onclick="window.closeModal && window.closeModal()" id="modalClose"></button>
+            </div>
+            <div class="modal-body">
+                <form id="transactionForm">
+                    <input type="hidden" id="transactionId">
+
+                    <div class="type-toggle">
+                        <button type="button" class="type-toggle-btn expense active"
+                            onclick="window.setTransactionType && window.setTransactionType('expense')"
+                            id="expenseBtn"></button>
+                        <button type="button" class="type-toggle-btn income"
+                            onclick="window.setTransactionType && window.setTransactionType('income')"
+                            id="incomeBtn"></button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="name">Name</label>
+                        <input type="text" id="name" class="form-input" placeholder="e.g., Grocery shopping" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="amount">Amount</label>
+                        <input type="number" id="amount" class="form-input" step="0.01" min="0" placeholder="0.00"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="category">Category</label>
+                        <select id="category" class="form-select" required>
+                            <option value="">Select category</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="date">Date</label>
+                        <input type="date" id="date" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="tags">Tags</label>
+                        <input type="text" id="tags" class="form-input"
+                            placeholder="e.g., work, personal (comma-separated)">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="description">Description</label>
+                        <textarea id="description" class="form-textarea" placeholder="Optional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                    onclick="window.closeModal && window.closeModal()">Cancel</button>
+                <button type="button" class="btn btn-primary"
+                    onclick="window.saveTransaction && window.saveTransaction()" id="saveBtn"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Details Modal -->
+    <div class="modal-overlay" id="transactionDetailsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Transaction Details</h2>
+                <button class="modal-close" onclick="window.closeDetailsModal && window.closeDetailsModal()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="details-content">
+                    <div class="details-header" style="text-align: center; margin-bottom: 2rem;">
+                        <div id="detailsIcon" style="margin-bottom: 1rem; transform: scale(1.5);"></div>
+                        <h3 id="detailsName" style="margin-bottom: 0.5rem; font-size: 1.5rem;"></h3>
+                        <div id="detailsAmount" style="font-size: 2rem; font-weight: 700;"></div>
+                    </div>
+
+                    <div class="details-grid" style="display: grid; gap: 1.5rem;">
+                        <div class="detail-item">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Category</label>
+                            <div id="detailsCategory" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="detail-item">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Date</label>
+                            <div id="detailsDate" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="detail-item">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Type</label>
+                            <div id="detailsType" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="detail-item" id="detailsTagsContainer" style="display: none;">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Tags</label>
+                            <div id="detailsTags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+                        </div>
+
+                        <div class="detail-item" id="detailsItemsContainer" style="display: none;">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Items</label>
+                            <div id="detailsItems" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                        </div>
+
+                        <div class="detail-item" id="detailsDescriptionContainer" style="display: none;">
+                            <label
+                                style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Description</label>
+                            <div id="detailsDescription"
+                                style="padding: 1rem; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                    onclick="window.closeDetailsModal && window.closeDetailsModal()">Close</button>
+                <button type="button" class="btn btn-primary" id="detailsEditBtn">
+                    <span style="display: flex; align-items: center; gap: 0.5rem;">
+                        Edit Transaction
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Scanner Modal -->
+    <div class="modal-overlay" id="scannerModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="scannerModalTitle">Scan Receipt</h2>
+                <button class="modal-close" onclick="window.closeScannerModal && window.closeScannerModal()"
+                    id="scannerModalClose"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Upload -->
+                <div id="scannerContent">
+                    <div style="text-align: center; padding: 1rem;">
+                        <div id="scannerIcon" style="margin-bottom: 1rem; color: var(--primary);"></div>
+                        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                            Upload a receipt image or take a photo to automatically extract transaction details.
+                        </p>
+
+                        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+                            <label class="btn btn-primary" style="cursor: pointer;">
+                                <input type="file" id="receiptFileInput" accept="image/*" style="display: none;"
+                                    onchange="handleReceiptFile(event)">
+                                <span id="uploadIcon"></span>
+                                <span>Upload Image</span>
+                            </label>
+                            <label class="btn btn-secondary" style="cursor: pointer;">
+                                <input type="file" id="receiptCameraInput" accept="image/*" capture="environment"
+                                    style="display: none;" onchange="handleReceiptFile(event)">
+                                <span id="cameraIcon"></span>
+                                <span>Take Photo</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="receiptPreview" style="display: none; margin-top: 1rem;">
+                        <div
+                            style="position: relative; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-tertiary);">
+                            <img id="receiptImage" style="width: 100%; max-height: 250px; object-fit: contain;">
+                            <button class="btn btn-ghost btn-icon" onclick="clearReceiptPreview()"
+                                style="position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-secondary);"
+                                id="clearPreviewBtn"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Loading -->
+                <div id="scannerLoading" style="display: none; text-align: center; padding: 2rem;">
+                    <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                    <p style="color: var(--text-secondary);">Analyzing receipt with AI...</p>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem;">Extracting store, items,
+                        and totals</p>
+                </div>
+
+                <!-- Step 3: Checkout/Review -->
+                <div id="scannerCheckout" style="display: none;">
+                    <div
+                        style="background: var(--success-bg); border: 1px solid var(--success); border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--success);">
+                            <span id="successIcon"></span>
+                            <strong>Receipt scanned! Review and edit below.</strong>
+                        </div>
+                    </div>
+
+                    <!-- Store Info -->
+                    <div class="checkout-section">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Store Name</label>
+                                <input type="text" id="checkoutStoreName" class="form-input">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Date</label>
+                                <input type="date" id="checkoutDate" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select id="checkoutCategory" class="form-select"></select>
+                    </div>
+
+                    <!-- Items Section -->
+                    <div class="checkout-section">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label class="form-label" style="margin: 0;">Items (<span
+                                    id="checkoutItemCount">0</span>)</label>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="addCheckoutItem()"
+                                id="addItemBtn"></button>
+                        </div>
+                        <div id="checkoutItemsList" class="checkout-items-list"></div>
+                    </div>
+
+                    <!-- Totals -->
+                    <div class="checkout-totals">
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                            <span class="text-muted">Subtotal</span>
+                            <span id="checkoutSubtotal">$0.00</span>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                            <span class="text-muted">Tax</span>
+                            <input type="number" id="checkoutTax" class="form-input"
+                                style="width: 100px; text-align: right; padding: 0.25rem 0.5rem;" step="0.01" min="0">
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.75rem 0; font-size: 1.1rem; font-weight: 700;">
+                            <span>Total</span>
+                            <input type="number" id="checkoutTotal" class="form-input"
+                                style="width: 120px; text-align: right; font-weight: 700; font-size: 1.1rem;"
+                                step="0.01" min="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                    onclick="window.closeScannerModal && window.closeScannerModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="scanReceiptBtn" onclick="scanReceipt()"
+                    style="display: none;"></button>
+                <button type="button" class="btn btn-primary" id="confirmCheckoutBtn" onclick="confirmCheckout()"
+                    style="display: none;"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/icons.js"></script>
+    <script type="module" src="/app.js"></script>
+</body>
+
+</html>

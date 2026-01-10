@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Data
+data/
+*.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+expense-tracker
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Documentation
+*.md
+!README.md
+

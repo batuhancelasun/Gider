@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Analytics and reports - Gider Expense Tracker">
+    
+    <title>Gider - Analytics</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="stylesheet" href="/styles.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <img src="/logo.png" alt="Gider" class="nav-logo">
+                <span class="nav-title">Gider</span>
+            </a>
+            
+            <div class="nav-center">
+                <a href="/" class="nav-link" id="nav-dashboard"></a>
+                <a href="/table" class="nav-link" id="nav-transactions"></a>
+                <a href="/analytics" class="nav-link active" id="nav-analytics"></a>
+                <a href="/items" class="nav-link" id="nav-items"></a>
+                <a href="/recurring" class="nav-link" id="nav-recurring"></a>
+                <a href="/settings" class="nav-link" id="nav-settings"></a>
+            </div>
+            
+            <div class="nav-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="icon-sun"></span>
+                    <span class="icon-moon"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header animate-fade-in">
+            <div>
+                <h1 class="page-title">Analytics</h1>
+                <p class="page-subtitle">Monthly and yearly insights</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="analyticsTabs">
+            <button class="tab active" data-tab="monthly" onclick="switchAnalyticsTab('monthly')">
+                <span id="tabMonthlyIcon"></span>
+                <span>Monthly</span>
+            </button>
+            <button class="tab" data-tab="yearly" onclick="switchAnalyticsTab('yearly')">
+                <span id="tabYearlyIcon"></span>
+                <span>Yearly</span>
+            </button>
+        </div>
+
+        <!-- Monthly Tab -->
+        <div class="tab-content active" id="tab-monthly">
+            <!-- Month Selector -->
+            <div class="card animate-slide-up" style="margin-bottom: 1.5rem;">
+                <div class="flex gap-2" style="align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-secondary btn-icon" onclick="changeMonth(-1)" id="prevMonthBtn"></button>
+                    <div style="flex: 1; text-align: center;">
+                        <h2 id="currentMonthLabel" style="font-size: 1.25rem; font-weight: 700;"></h2>
+                    </div>
+                    <button class="btn btn-secondary btn-icon" onclick="changeMonth(1)" id="nextMonthBtn"></button>
+                </div>
+            </div>
+
+            <!-- Monthly Stats -->
+            <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                <div class="stat-card income animate-slide-up">
+                    <div class="stat-header">
+                        <div class="stat-icon" id="monthIncomeIcon"></div>
+                        <span class="stat-label">Income</span>
+                    </div>
+                    <div class="stat-value" id="monthIncome">$0.00</div>
+                </div>
+                <div class="stat-card expense animate-slide-up">
+                    <div class="stat-header">
+                        <div class="stat-icon" id="monthExpenseIcon"></div>
+                        <span class="stat-label">Expenses</span>
+                    </div>
+                    <div class="stat-value" id="monthExpense">$0.00</div>
+                </div>
+                <div class="stat-card balance animate-slide-up">
+                    <div class="stat-header">
+                        <div class="stat-icon" id="monthBalanceIcon"></div>
+                        <span class="stat-label">Net</span>
+                    </div>
+                    <div class="stat-value" id="monthBalance">$0.00</div>
+                </div>
+            </div>
+
+            <!-- Monthly Charts -->
+            <div class="chart-grid" style="margin-bottom: 1.5rem;">
+                <div class="chart-card animate-slide-up">
+                    <div class="card-header">
+                        <h3 class="card-title" id="monthExpenseChartTitle"></h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="monthExpenseChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card animate-slide-up">
+                    <div class="card-header">
+                        <h3 class="card-title" id="monthIncomeChartTitle"></h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="monthIncomeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Breakdown Chart -->
+            <div class="chart-card animate-slide-up" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <h3 class="card-title" id="dailyChartTitle"></h3>
+                </div>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Categories -->
+            <div class="chart-grid">
+                <div class="card animate-slide-up">
+                    <div class="card-header">
+                        <h3 class="card-title" id="topExpensesTitle"></h3>
+                    </div>
+                    <div id="topExpensesList"></div>
+                </div>
+                <div class="card animate-slide-up">
+                    <div class="card-header">
+                        <h3 class="card-title" id="topIncomeTitle"></h3>
+                    </div>
+                    <div id="topIncomeList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yearly Tab -->
+        <div class="tab-content" id="tab-yearly">
+            <!-- Year Selector -->
+            <div class="card animate-slide-up" style="margin-bottom: 1.5rem;">
+                <div class="flex gap-2" style="align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-secondary btn-icon" onclick="changeYear(-1)" id="prevYearBtn"></button>
+                    <div style="flex: 1; text-align: center;">
+                        <h2 id="currentYearLabel" style="font-size: 1.25rem; font-weight: 700;"></h2>
+                    </div>
+                    <button class="btn btn-secondary btn-icon" onclick="changeYear(1)" id="nextYearBtn"></button>
+                </div>
+            </div>
+
+            <!-- Yearly Stats -->
+            <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                <div class="stat-card income animate-slide-up">
+                    <div class="stat-header">
+                        <div class="stat-icon" id="yearIncomeIcon"></div>
+                        <span class="stat-label">Total Income</span>
+                    </div>
+                    <div class="stat-value" id="yearIncome">$0.00</div>
+                </div>
+                <div class="stat-card expense animate-slide-up">
+                    <div class="stat-header">
+                        <div class="stat-icon" id="yearExpenseIcon"></div>
+                        <span class="stat-label">Total Expenses</span>
+                    </div>
+                    <div class="stat-value" id="yearExpense">$0.00</div>
+                </div>
+                <div class="stat-card balance animate-slide-up">
+                    <div class="stat-header">
+                        <div class="stat-icon" id="yearBalanceIcon"></div>
+                        <span class="stat-label">Net Savings</span>
+                    </div>
+                    <div class="stat-value" id="yearBalance">$0.00</div>
+                </div>
+            </div>
+
+            <!-- Monthly Comparison Chart -->
+            <div class="chart-card animate-slide-up" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <h3 class="card-title" id="yearlyComparisonTitle"></h3>
+                </div>
+                <div class="chart-container" style="height: 350px;">
+                    <canvas id="yearlyComparisonChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Yearly Breakdown -->
+            <div class="chart-grid">
+                <div class="chart-card animate-slide-up">
+                    <div class="card-header">
+                        <h3 class="card-title" id="yearExpenseChartTitle"></h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="yearExpenseChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card animate-slide-up">
+                    <div class="card-header">
+                        <h3 class="card-title" id="yearIncomeChartTitle"></h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="yearIncomeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Summary Table -->
+            <div class="table-card animate-slide-up" style="margin-top: 1.5rem;">
+                <div class="card-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+                    <h3 class="card-title" id="monthlySummaryTitle"></h3>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Income</th>
+                                <th>Expenses</th>
+                                <th>Net</th>
+                                <th>Transactions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlySummaryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/icons.js"></script>
+    <script src="/app.js"></script>
+    <script src="/analytics.js"></script>
+</body>
+</html>
+

@@ -504,18 +504,11 @@ body::before {
     margin-bottom: 1.5rem;
 }
 
-/* Recurring page specific - horizontal layout on desktop */
+/* Recurring page specific - ensure horizontal layout */
 .recurring-stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-}
-
-/* Mobile override - MUST be after desktop rule */
-@media (max-width: 768px) {
-    .recurring-stats-grid {
-        grid-template-columns: 1fr !important;
-    }
 }
 
 .stat-card {
@@ -1355,70 +1348,14 @@ body::before {
         flex-direction: column;
         align-items: stretch;
     }
-    
-    /* Recurring items - vertical layout on mobile */
-    .recurring-item {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 0.75rem !important;
-        padding: 1rem !important;
-    }
-    
-    .recurring-item > div:first-child {
-        align-self: flex-start !important;
-        width: 40px !important;
-        height: 40px !important;
-        flex-shrink: 0 !important;
-        margin-bottom: 0 !important;
-    }
-    
-    .recurring-item > div:nth-child(2) {
-        flex: 1 1 auto !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-    }
-    
-    .recurring-item > div:nth-child(3) {
-        text-align: left !important;
-        align-self: flex-start !important;
-        width: 100% !important;
-        margin-left: 0 !important;
-    }
-    
-    .recurring-item > div:last-child {
-        align-self: stretch !important;
-        width: 100% !important;
-        display: flex !important;
-        justify-content: flex-end !important;
-        margin-top: 0.5rem !important;
-        padding-top: 0.75rem !important;
-        border-top: 1px solid var(--border) !important;
-    }
 
     .stats-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: 1fr;
     }
 
-    /* Recurring stats should also be vertical on mobile - override inline styles */
-    .recurring-stats-grid,
-    div.stats-grid.recurring-stats-grid,
-    div[class*="stats-grid"][class*="recurring"] {
-        grid-template-columns: 1fr !important;
-        display: grid !important;
-    }
-    
-    /* Force all grid containers with 3 columns to be 1 column on mobile */
-    div[style*="grid-template-columns"] {
-        grid-template-columns: 1fr !important;
-    }
-    
-    /* Very specific override for recurring stats - must override inline styles */
-    .container .stats-grid.recurring-stats-grid,
-    .container div.stats-grid.recurring-stats-grid,
-    div.stats-grid.recurring-stats-grid[style] {
-        grid-template-columns: 1fr !important;
+    /* Keep stats horizontal on recurring page - use more specific selector */
+    .recurring-stats-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
         display: grid !important;
     }
 

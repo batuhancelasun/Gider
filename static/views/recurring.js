@@ -25,7 +25,7 @@ export const RecurringView = {
                 </div>
 
                 <!-- Stats -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="stats-grid recurring-stats-grid" style="gap: 1rem; margin-bottom: 1.5rem;">
                     <div class="stat-card expense">
                         <div class="stat-header">
                             <div class="stat-icon" id="monthlyExpenseIcon">${getIcon('trendingDown', 20)}</div>

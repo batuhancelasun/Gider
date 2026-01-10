@@ -504,11 +504,18 @@ body::before {
     margin-bottom: 1.5rem;
 }
 
-/* Recurring page specific - ensure horizontal layout */
+/* Recurring page specific - horizontal layout on desktop */
 .recurring-stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
+}
+
+/* On mobile, make it vertical like dashboard */
+@media (max-width: 768px) {
+    .recurring-stats-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 .stat-card {
@@ -1394,10 +1401,9 @@ body::before {
         grid-template-columns: 1fr;
     }
 
-    /* Keep stats horizontal on recurring page - use more specific selector */
+    /* Recurring stats should also be vertical on mobile */
     .recurring-stats-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        display: grid !important;
+        grid-template-columns: 1fr !important;
     }
 
 

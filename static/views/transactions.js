@@ -199,6 +199,8 @@ export const TransactionsView = {
         window.filterExpenses = filterExpenses;
         window.filterIncome = filterIncome;
         window.showDeleteModal = showDeleteModal;
+        window.confirmDelete = confirmDelete;
+        window.closeDeleteModal = closeDeleteModal;
         window.renderAllTabs = renderAllTabs;
 
         // Core Modal functions
@@ -502,9 +504,26 @@ function showDeleteModal(id) {
     const modal = document.getElementById('deleteModal');
     if (modal) {
         modal.classList.add('active', 'show');
+        // Initialize delete icon if needed
+        const deleteIcon = document.getElementById('deleteIcon');
+        if (deleteIcon && window.getIcon) {
+            deleteIcon.innerHTML = window.getIcon('alertTriangle', 48);
+        }
         // Attach confirm handler dynamically if needed or rely on static html if global
         // Since deleteModal is global in index.html, we need to ensure confirmDelete is available
         window.confirmDelete = confirmDelete;
+        window.closeDeleteModal = closeDeleteModal;
+    }
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.classList.remove('active');
+            deleteTransactionId = null;
+        }, 300);
     }
 }
 

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#00d4aa">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -420,6 +420,25 @@
                     style="display: none;"></button>
                 <button type="button" class="btn btn-primary" id="confirmCheckoutBtn" onclick="confirmCheckout()"
                     style="display: none;"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Delete Transaction</h2>
+                <button class="modal-close" onclick="window.closeDeleteModal && window.closeDeleteModal()" id="deleteModalClose"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="deleteIcon" style="margin-bottom: 1rem; color: var(--danger); opacity: 0.8;"></div>
+                <p>Are you sure you want to delete this transaction?</p>
+                <p class="text-muted mt-1">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="window.closeDeleteModal && window.closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="window.confirmDelete && window.confirmDelete()">Delete</button>
             </div>
         </div>
     </div>

@@ -1760,8 +1760,7 @@ body::before {
         display: flex !important;
         position: fixed;
         bottom: calc(5rem + env(safe-area-inset-bottom));
-        left: 50%;
-        transform: translateX(-50%);
+        right: 1rem;
         width: 56px;
         height: 56px;
         min-width: 56px;

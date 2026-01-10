@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gider-v10';
+const CACHE_NAME = 'gider-v11';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -23,6 +23,11 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/views/auth.js',
   '/views/dashboard.js',
+  '/views/recurring.js',
+  '/views/analytics.js',
+  '/views/transactions.js',
+  '/views/settings.js',
+  '/views/items.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 

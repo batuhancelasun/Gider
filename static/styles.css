@@ -1353,11 +1353,11 @@ body::before {
         grid-template-columns: 1fr;
     }
 
-    /* Keep stats horizontal on recurring page - use more specific selector */
-    .recurring-stats-grid {
+    /* Keep stats horizontal on recurring page - REMOVED per user request for vertical stacking */
+    /* .recurring-stats-grid {
         grid-template-columns: repeat(3, 1fr) !important;
         display: grid !important;
-    }
+    } */
 
 
 

@@ -58,12 +58,19 @@ export const SettingsView = {
                                     </select>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Settings</button>
-                            </form>
-                        </div>
-                    </div>
+                                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                                    <div>
+                                        <label class="form-label" for="notificationsToggle">Notifications</label>
+                                        <p class="form-hint">Enable or disable in-app/push notifications</p>
+                                    </div>
+                                    <input type="checkbox" id="notificationsToggle" style="width: 18px; height: 18px;">
+                                </div>
 
-                    <!-- Categories -->
+                                <div class="form-group">
+                                    <label class="form-label" for="notificationLead">Notify Ahead (days)</label>
+                                    <input type="number" id="notificationLead" class="form-input" min="0" max="30" value="3">
+                                    <p class="form-hint">How many days before the due date to notify for recurring items</p>
+                                </div>
                     <div class="settings-card animate-slide-up">
                         <div class="settings-card-header">
                             <div class="settings-card-icon">${getIcon('tag', 18)}</div>
@@ -245,15 +252,15 @@ async function loadSettings() {
         const currencyEl = document.getElementById('currencySymbol');
         const dateEl = document.getElementById('startDate');
         const themeEl = document.getElementById('theme');
+        const notifEl = document.getElementById('notificationsToggle');
+        const leadEl = document.getElementById('notificationLead');
         const geminiEl = document.getElementById('geminiApiKey');
-
+ 
         if (currencyEl) currencyEl.value = settings.currency_symbol || '$';
         if (dateEl) dateEl.value = settings.start_date || 1;
         if (themeEl) themeEl.value = settings.theme || 'dark';
-
-        if (geminiEl && settings.gemini_api_key) {
-            geminiEl.value = '••••••••••••••••';
-            geminiEl.dataset.hasKey = 'true';
+        if (notifEl) notifEl.checked = settings.notifications_enabled !== false;
+        if (leadEl) leadEl.value = settings.notifications_lead_days ?? 3;
         }
     } catch (error) {
         console.error('Failed to load settings:', error);
@@ -266,6 +273,8 @@ async function handleSettingsSubmit(e) {
         currency_symbol: document.getElementById('currencySymbol').value || '$',
         start_date: parseInt(document.getElementById('startDate').value) || 1,
         theme: document.getElementById('theme').value || 'dark',
+        notifications_enabled: (document.getElementById('notificationsToggle')?.checked ?? true),
+        notifications_lead_days: Math.max(0, parseInt(document.getElementById('notificationLead')?.value) || 0),
         gemini_api_key: settings?.gemini_api_key || ''
     };
 

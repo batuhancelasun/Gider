@@ -10,6 +10,7 @@ export let allTransactions = [];
 export let allCategories = [];
 export let currentTransactionType = 'expense';
 export let selectedCategoryIcon = 'other';
+let editItems = [];
 
 // ============================================
 // INITIALIZATION
@@ -325,6 +326,8 @@ export function openModal(transactionId = null) {
     document.getElementById('transactionId').value = '';
     document.getElementById('date').value = new Date().toISOString().split('T')[0];
     setTransactionType('expense');
+    editItems = [];
+    renderTransactionItems();
 
     document.getElementById('modalTitle').textContent = transactionId ? 'Edit Transaction' : 'Add Transaction';
 
@@ -464,6 +467,13 @@ async function loadTransactionForEdit(id) {
     document.getElementById('tags').value = transaction.tags ? transaction.tags.join(', ') : '';
     document.getElementById('description').value = transaction.description || '';
 
+    editItems = (transaction.items || []).map(item => ({
+        name: item.name || '',
+        quantity: item.quantity || 1,
+        price: item.price || 0
+    }));
+    renderTransactionItems();
+
     setTransactionType(transaction.is_income ? 'income' : 'expense');
 }
 
@@ -594,6 +604,11 @@ export async function saveTransaction() {
     const date = document.getElementById('date').value;
     const tagsInput = document.getElementById('tags').value;
     const description = document.getElementById('description').value.trim();
+    const itemsToSave = editItems.filter(it => it.name && it.name.trim()).map(it => ({
+        ...it,
+        quantity: parseFloat(it.quantity) || 1,
+        price: parseFloat(it.price) || 0
+    }));
 
     if (!name || !amount || !category || !date) {
         showToast('error', 'Validation Error', 'Please fill in all required fields');
@@ -611,7 +626,8 @@ export async function saveTransaction() {
         date: new Date(date).toISOString(),
         tags,
         is_income: isIncome,
-        description
+        description,
+        ...(itemsToSave.length ? { items: itemsToSave } : {})
     };
 
     try {
@@ -638,6 +654,61 @@ export async function saveTransaction() {
         showToast('error', 'Error', 'Failed to save transaction');
     }
 }
+
+// ============================================
+// TRANSACTION ITEMS (MANUAL EDIT)
+// ============================================
+
+function renderTransactionItems() {
+    const container = document.getElementById('transactionItemsList');
+    if (!container) return;
+
+    if (!editItems.length) {
+        container.innerHTML = '<div style="padding: 0.75rem; color: var(--text-muted); text-align: center;">No items. Add one to edit.</div>';
+        return;
+    }
+
+    container.innerHTML = editItems.map((item, index) => `
+        <div class="checkout-item" data-index="${index}">
+            <input type="text" class="name-input" value="${escapeHtmlEdit(item.name || '')}" placeholder="Item name" onchange="updateTransactionItem(${index}, 'name', this.value)">
+            <input type="number" class="qty-input" value="${item.quantity || 1}" min="1" onchange="updateTransactionItem(${index}, 'quantity', this.value)">
+            <input type="number" class="price-input" value="${item.price || 0}" step="0.01" min="0" onchange="updateTransactionItem(${index}, 'price', this.value)">
+            <button class="remove-btn" onclick="removeTransactionItem(${index})">${getIcon('x', 14)}</button>
+        </div>
+    `).join('');
+}
+
+function updateTransactionItem(index, field, value) {
+    if (index < 0 || index >= editItems.length) return;
+
+    if (field === 'quantity') {
+        editItems[index].quantity = parseFloat(value) || 1;
+    } else if (field === 'price') {
+        editItems[index].price = parseFloat(value) || 0;
+    } else {
+        editItems[index][field] = value;
+    }
+}
+
+function addTransactionItem() {
+    editItems.push({ name: '', quantity: 1, price: 0 });
+    renderTransactionItems();
+}
+
+function removeTransactionItem(index) {
+    editItems.splice(index, 1);
+    renderTransactionItems();
+}
+
+function escapeHtmlEdit(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+window.addTransactionItem = addTransactionItem;
+window.updateTransactionItem = updateTransactionItem;
+window.removeTransactionItem = removeTransactionItem;
 
 // ============================================
 // UTILITY FUNCTIONS

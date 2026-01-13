@@ -110,7 +110,9 @@ def load_data(user_id):
                 'currency_symbol': '$',
                 'start_date': 1,
                 'theme': 'dark',
-                'gemini_api_key': ''
+                'gemini_api_key': '',
+                'notifications_enabled': True,
+                'notifications_lead_days': 3
             }
         }
     
@@ -122,6 +124,18 @@ def load_data(user_id):
         data['categories'] = DEFAULT_CATEGORIES.copy()
     if 'items' not in data:
         data['items'] = []
+    if 'settings' not in data:
+        data['settings'] = {
+            'currency_symbol': '$',
+            'start_date': 1,
+            'theme': 'dark',
+            'gemini_api_key': '',
+            'notifications_enabled': True,
+            'notifications_lead_days': 3
+        }
+    else:
+        data['settings'].setdefault('notifications_enabled', True)
+        data['settings'].setdefault('notifications_lead_days', 3)
     
     return data
 
@@ -456,7 +470,8 @@ def get_recurring_notifications(current_user_id):
     """Return recurring transactions that are due today or coming up soon."""
     data = load_data(current_user_id)
     today = datetime.now().date()
-    horizon = today + timedelta(days=3)
+    horizon_days = data.get('settings', {}).get('notifications_lead_days', 3)
+    horizon = today + timedelta(days=horizon_days)
 
     due = []
     upcoming = []
@@ -611,7 +626,15 @@ def get_settings(current_user_id):
 def update_settings(current_user_id):
     """Update settings"""
     data = load_data(current_user_id)
-    data['settings'] = request.json
+    incoming = request.json or {}
+    # Merge to retain unspecified keys
+    merged = data.get('settings', {}).copy()
+    merged.update(incoming)
+    try:
+        merged['notifications_lead_days'] = max(0, int(merged.get('notifications_lead_days', 3)))
+    except Exception:
+        merged['notifications_lead_days'] = 3
+    data['settings'] = merged
     save_data(current_user_id, data)
     return jsonify(data['settings'])
 

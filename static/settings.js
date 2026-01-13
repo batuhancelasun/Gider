@@ -29,6 +29,10 @@ async function loadSettingsForm() {
         document.getElementById('currencySymbol').value = settings.currency_symbol || '$';
         document.getElementById('startDate').value = settings.start_date || 1;
         document.getElementById('theme').value = settings.theme || 'dark';
+        const notificationsToggle = document.getElementById('notificationsToggle');
+        if (notificationsToggle) notificationsToggle.checked = settings.notifications_enabled !== false;
+        const notificationLead = document.getElementById('notificationLead');
+        if (notificationLead) notificationLead.value = settings.notifications_lead_days ?? 3;
         
         // Load Gemini API key (masked)
         const geminiInput = document.getElementById('geminiApiKey');
@@ -98,6 +102,8 @@ function setupSettingsForm() {
             currency_symbol: document.getElementById('currencySymbol').value || '$',
             start_date: parseInt(document.getElementById('startDate').value) || 1,
             theme: document.getElementById('theme').value || 'dark',
+            notifications_enabled: (document.getElementById('notificationsToggle')?.checked ?? true),
+            notifications_lead_days: Math.max(0, parseInt(document.getElementById('notificationLead')?.value) || 0),
             gemini_api_key: settings?.gemini_api_key || ''
         };
         

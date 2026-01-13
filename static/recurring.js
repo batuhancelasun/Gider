@@ -438,6 +438,12 @@ async function initRecurringNotifications() {
     const btn = document.getElementById('recurringNotifyBtn');
     updateNotificationButton();
 
+    // Respect saved settings; default to true unless explicitly disabled
+    if (typeof settings !== 'undefined' && settings) {
+        notificationsEnabled = settings.notifications_enabled !== false;
+        localStorage.setItem('recurringNotifications', notificationsEnabled ? 'enabled' : 'disabled');
+    }
+
     if (!('Notification' in window) || !navigator.serviceWorker) {
         if (btn) {
             btn.disabled = true;
@@ -481,12 +487,30 @@ async function toggleRecurringNotifications() {
     }
 
     localStorage.setItem('recurringNotifications', notificationsEnabled ? 'enabled' : 'disabled');
+    await persistNotificationSetting();
     updateNotificationButton();
 
     if (notificationsEnabled) {
         startNotificationLoop();
     } else {
         stopNotificationLoop();
+    }
+}
+
+async function persistNotificationSetting() {
+    if (typeof settings === 'undefined' || !settings) return;
+    try {
+        const newSettings = { ...settings, notifications_enabled: notificationsEnabled };
+        const response = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(newSettings)
+        });
+        if (response.ok) {
+            settings = newSettings;
+        }
+    } catch (error) {
+        console.error('Failed to persist notification setting', error);
     }
 }
 

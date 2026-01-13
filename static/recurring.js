@@ -6,6 +6,17 @@ let recurringTransactions = [];
 let currentRecurringType = 'expense';
 let selectedFrequency = 'monthly';
 let deleteRecurringId = null;
+let notificationsEnabled = localStorage.getItem('recurringNotifications') === 'enabled';
+let notificationTimer = null;
+let notifiedKeys = new Set(JSON.parse(localStorage.getItem('recurringNotified') || '[]'));
+
+function authHeaders(extra = {}) {
+    const token = localStorage.getItem('token');
+    return {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...extra
+    };
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -20,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initRecurringIcons();
     renderRecurringLists();
     updateRecurringStats();
+    await initRecurringNotifications();
 });
 
 function initRecurringIcons() {
@@ -72,7 +84,7 @@ function initRecurringIcons() {
 
 async function loadRecurringTransactions() {
     try {
-        const response = await fetch('/api/recurring');
+        const response = await fetch('/api/recurring', { headers: authHeaders() });
         recurringTransactions = await response.json();
     } catch (error) {
         console.error('Failed to load recurring transactions:', error);
@@ -324,7 +336,7 @@ async function saveRecurring() {
 
         const response = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(recurring)
         });
 
@@ -356,7 +368,7 @@ async function toggleRecurringStatus(id) {
     try {
         const response = await fetch(`/api/recurring/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ ...rt, is_active: newStatus })
         });
 
@@ -399,7 +411,8 @@ async function confirmDeleteRecurring() {
 
     try {
         const response = await fetch(`/api/recurring/${deleteRecurringId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: authHeaders()
         });
 
         if (response.ok) {
@@ -416,4 +429,130 @@ async function confirmDeleteRecurring() {
         showToast('error', 'Error', 'Failed to delete recurring transaction');
     }
 }
+
+// ============================================
+// RECURRING NOTIFICATIONS
+// ============================================
+
+async function initRecurringNotifications() {
+    const btn = document.getElementById('recurringNotifyBtn');
+    updateNotificationButton();
+
+    if (!('Notification' in window) || !navigator.serviceWorker) {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Notifications unavailable';
+        }
+        return;
+    }
+
+    if (notificationsEnabled && Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        notificationsEnabled = permission === 'granted';
+        localStorage.setItem('recurringNotifications', notificationsEnabled ? 'enabled' : 'disabled');
+    }
+
+    if (notificationsEnabled) {
+        startNotificationLoop();
+    }
+}
+
+function startNotificationLoop() {
+    stopNotificationLoop();
+    checkRecurringNotifications();
+    notificationTimer = setInterval(checkRecurringNotifications, 60 * 1000);
+}
+
+function stopNotificationLoop() {
+    if (notificationTimer) {
+        clearInterval(notificationTimer);
+        notificationTimer = null;
+    }
+}
+
+async function toggleRecurringNotifications() {
+    if (!('Notification' in window)) return;
+
+    if (!notificationsEnabled) {
+        const permission = await Notification.requestPermission();
+        notificationsEnabled = permission === 'granted';
+    } else {
+        notificationsEnabled = false;
+    }
+
+    localStorage.setItem('recurringNotifications', notificationsEnabled ? 'enabled' : 'disabled');
+    updateNotificationButton();
+
+    if (notificationsEnabled) {
+        startNotificationLoop();
+    } else {
+        stopNotificationLoop();
+    }
+}
+
+function updateNotificationButton() {
+    const btn = document.getElementById('recurringNotifyBtn');
+    if (!btn) return;
+
+    btn.innerHTML = notificationsEnabled
+        ? `${getIcon('bell', 16)} <span>Notifications On</span>`
+        : `${getIcon('bellOff', 16)} <span>Notifications Off</span>`;
+    btn.className = notificationsEnabled ? 'btn btn-secondary' : 'btn btn-ghost';
+}
+
+async function checkRecurringNotifications() {
+    if (!notificationsEnabled) return;
+
+    try {
+        const response = await fetch('/api/recurring/notifications', { headers: authHeaders() });
+        if (!response.ok) return;
+        const data = await response.json();
+        const now = new Date();
+
+        [...(data.due || []), ...(data.upcoming || [])].forEach(item => {
+            const key = `${item.id}-${item.next_date}`;
+            if (notifiedKeys.has(key)) return;
+
+            const dueDate = new Date(item.next_date);
+            const isToday = dueDate.toDateString() === now.toDateString();
+            const title = isToday ? 'Recurring due today' : 'Recurring coming up';
+            const amount = formatSafeAmount(item.amount, item.is_income);
+            const body = `${item.name} (${item.category}) hits on ${dueDate.toLocaleDateString()} for ${amount}`;
+
+            showLocalNotification(title, body);
+            notifiedKeys.add(key);
+        });
+
+        localStorage.setItem('recurringNotified', JSON.stringify(Array.from(notifiedKeys)));
+    } catch (error) {
+        console.error('Failed to check recurring notifications', error);
+    }
+}
+
+function formatSafeAmount(amount, isIncome) {
+    const prefix = isIncome ? '+' : '-';
+    try {
+        return `${prefix}${formatCurrency(Math.abs(amount || 0))}`;
+    } catch (e) {
+        const num = Math.abs(amount || 0).toFixed(2);
+        return `${prefix}$${num}`;
+    }
+}
+
+function showLocalNotification(title, body) {
+    if (navigator.serviceWorker && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, {
+                body,
+                icon: '/logo.png',
+                badge: '/logo.png'
+            });
+        });
+    } else {
+        showToast('warning', title, body);
+    }
+}
+
+// Expose toggle for inline button handler
+window.toggleRecurringNotifications = toggleRecurringNotifications;
 

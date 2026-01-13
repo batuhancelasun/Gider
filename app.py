@@ -43,6 +43,11 @@ DEFAULT_CATEGORIES = [
     {'id': '18', 'name': 'Other', 'icon': 'other', 'type': 'both'}
 ]
 
+
+def normalize_item_name(name: str) -> str:
+    """Return a title-cased item name for consistent storage/display."""
+    return name.strip().title() if name else ''
+
 def ensure_data_dir():
     """Create data directory if it doesn't exist"""
     DATA_DIR.mkdir(exist_ok=True)
@@ -206,6 +211,15 @@ def calculate_next_date(rt, last_date):
     
     return next_date
 
+
+def next_occurrence(rt):
+    """Calculate next occurrence date (date) for a recurring transaction."""
+    last_processed = rt.get('last_processed')
+    last_date = None
+    if last_processed:
+        last_date = datetime.fromisoformat(last_processed.replace('Z', '')).date()
+    return calculate_next_date(rt, last_date)
+
 # --- Auth Routes ---
 
 @app.route('/api/auth/register', methods=['POST'])
@@ -301,10 +315,12 @@ def create_transaction(current_user_id):
     
     # Handle items if present
     if 'items' in transaction and transaction['items']:
+        normalized_items = []
         for item in transaction['items']:
+            item_name = normalize_item_name(item.get('name', ''))
             item_record = {
                 'id': str(uuid.uuid4()),
-                'name': item.get('name', ''),
+                'name': item_name,
                 'quantity': item.get('quantity', 1),
                 'price': item.get('price', 0),
                 'transaction_id': transaction['id'],
@@ -312,7 +328,9 @@ def create_transaction(current_user_id):
                 'category': transaction.get('category', ''),
                 'date': transaction['date']
             }
+            normalized_items.append({**item, 'name': item_name})
             data['items'].append(item_record)
+        transaction['items'] = normalized_items
     
     data['transactions'].append(transaction)
     save_data(current_user_id, data)
@@ -338,6 +356,33 @@ def update_transaction(current_user_id, transaction_id):
     
     for i, transaction in enumerate(data['transactions']):
         if transaction['id'] == transaction_id:
+            # Preserve existing items when none are provided
+            incoming_items = updated_transaction.get('items') if 'items' in updated_transaction else transaction.get('items', [])
+
+            if 'items' in updated_transaction:
+                # Remove old items for this transaction
+                data['items'] = [itm for itm in data['items'] if itm.get('transaction_id') != transaction_id]
+
+                normalized_items = []
+                for item in incoming_items or []:
+                    item_name = normalize_item_name(item.get('name', ''))
+                    item_record = {
+                        'id': str(uuid.uuid4()),
+                        'name': item_name,
+                        'quantity': item.get('quantity', 1),
+                        'price': item.get('price', 0),
+                        'transaction_id': transaction_id,
+                        'store': updated_transaction.get('name', transaction.get('name', '')),
+                        'category': updated_transaction.get('category', transaction.get('category', '')),
+                        'date': updated_transaction.get('date', transaction.get('date'))
+                    }
+                    normalized_items.append({**item, 'name': item_name})
+                    data['items'].append(item_record)
+
+                updated_transaction['items'] = normalized_items
+            else:
+                updated_transaction['items'] = incoming_items
+
             data['transactions'][i] = updated_transaction
             save_data(current_user_id, data)
             return jsonify(updated_transaction)
@@ -404,13 +449,62 @@ def delete_recurring_transaction(current_user_id, transaction_id):
     save_data(current_user_id, data)
     return '', 204
 
+
+@app.route('/api/recurring/notifications', methods=['GET'])
+@login_required
+def get_recurring_notifications(current_user_id):
+    """Return recurring transactions that are due today or coming up soon."""
+    data = load_data(current_user_id)
+    today = datetime.now().date()
+    horizon = today + timedelta(days=3)
+
+    due = []
+    upcoming = []
+
+    for rt in data['recurring_transactions']:
+        if not rt.get('is_active', True):
+            continue
+
+        next_date = next_occurrence(rt)
+        if not next_date:
+            continue
+
+        payload = {
+            'id': rt['id'],
+            'name': rt.get('name', 'Recurring'),
+            'amount': rt.get('amount', 0),
+            'category': rt.get('category', ''),
+            'frequency': rt.get('frequency', 'monthly'),
+            'next_date': next_date.isoformat(),
+            'is_income': rt.get('is_income', False)
+        }
+
+        if next_date <= today:
+            due.append(payload)
+        elif next_date <= horizon:
+            upcoming.append(payload)
+
+    return jsonify({'due': due, 'upcoming': upcoming})
+
 # Items API
 @app.route('/api/items', methods=['GET'])
 @login_required
 def get_items(current_user_id):
     """Get all items"""
     data = load_data(current_user_id)
-    return jsonify(data.get('items', []))
+    items = data.get('items', [])
+
+    updated = False
+    for item in items:
+        normalized_name = normalize_item_name(item.get('name', ''))
+        if normalized_name and item.get('name') != normalized_name:
+            item['name'] = normalized_name
+            updated = True
+
+    if updated:
+        save_data(current_user_id, data)
+
+    return jsonify(items)
 
 @app.route('/api/items/stats', methods=['GET'])
 @login_required
@@ -424,17 +518,18 @@ def get_item_stats(current_user_id):
     store_counts = {}
     
     for item in items:
-        name = item.get('name', 'Unknown').lower().strip()
+        display_name = normalize_item_name(item.get('name', 'Unknown')) or 'Unknown'
+        name_key = display_name.lower()
         qty = item.get('quantity', 1)
         price = item.get('price', 0)
         store = item.get('store', 'Unknown')
         
         # Item frequency
-        if name not in item_counts:
-            item_counts[name] = {'count': 0, 'total_qty': 0, 'total_spent': 0, 'name': item.get('name', 'Unknown')}
-        item_counts[name]['count'] += 1
-        item_counts[name]['total_qty'] += qty
-        item_counts[name]['total_spent'] += price * qty
+        if name_key not in item_counts:
+            item_counts[name_key] = {'count': 0, 'total_qty': 0, 'total_spent': 0, 'name': display_name}
+        item_counts[name_key]['count'] += 1
+        item_counts[name_key]['total_qty'] += qty
+        item_counts[name_key]['total_spent'] += price * qty
         
         # Store frequency
         if store not in store_counts:

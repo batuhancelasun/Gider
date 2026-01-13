@@ -1669,6 +1669,7 @@ body::before {
     flex-direction: column;
     gap: 1.5rem;
     margin-top: 0.5rem;
+    padding-bottom: 4rem;
 }
 
 .notifications-section {

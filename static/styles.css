@@ -1668,6 +1668,7 @@ body::before {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
+        margin-top: 0.5rem;
     }
 
     .notifications-section {
@@ -1683,6 +1684,7 @@ body::before {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 0.75rem;
     }
 
     .section-title {
@@ -1708,13 +1710,15 @@ body::before {
     .notification-list {
         max-height: 500px;
         overflow-y: auto;
+        padding: 0.25rem 0.25rem 0.5rem;
     }
 
     .notification-item {
-        display: flex;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
         align-items: center;
         gap: 0.875rem;
-        padding: 1rem 1.25rem;
+        padding: 0.875rem 1.1rem;
         border-bottom: 1px solid var(--border);
         transition: var(--transition);
         cursor: pointer;
@@ -1770,10 +1774,9 @@ body::before {
         font-size: 0.95rem;
         font-weight: 600;
         color: var(--text-primary);
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.3rem;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
     .notification-meta {
@@ -1789,6 +1792,8 @@ body::before {
         font-size: 1rem;
         font-weight: 700;
         flex-shrink: 0;
+        text-align: right;
+        min-width: 76px;
     }
 
     .notification-amount.income {
@@ -1840,6 +1845,38 @@ body::before {
         font-size: 0.75rem;
         font-weight: 600;
         color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .notifications-section {
+            border-radius: var(--radius-md);
+        }
+
+        .section-header {
+            padding: 0.875rem 1rem;
+        }
+
+        .notification-item {
+            grid-template-columns: auto 1fr;
+            grid-template-areas:
+                "icon amount"
+                "icon content";
+            row-gap: 0.4rem;
+        }
+
+        .notification-icon { grid-area: icon; }
+        .notification-content { grid-area: content; }
+        .notification-amount { grid-area: amount; text-align: right; }
+
+        .notification-title {
+            white-space: normal;
+            line-height: 1.3;
+        }
+
+        .notification-meta {
+            font-size: 0.78rem;
+            gap: 0.35rem;
+        }
     }
 
 

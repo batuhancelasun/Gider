@@ -110,12 +110,16 @@ function renderNotifications() {
 }
 
 function renderNotificationItem(item, isDue) {
-    const daysUntil = Math.ceil((new Date(item.next_occurrence) - new Date()) / (1000 * 60 * 60 * 24));
+    const nextDate = new Date(item.next_occurrence);
+    const isValidDate = !isNaN(nextDate.getTime());
+    const daysUntil = isValidDate ? Math.ceil((nextDate - new Date()) / (1000 * 60 * 60 * 24)) : NaN;
     const isIncome = item.amount >= 0;
     const prefix = isIncome ? '+' : '-';
     
     let timeText;
-    if (isDue) {
+    if (!isValidDate || isNaN(daysUntil)) {
+        timeText = `<span class="text-muted">Invalid date</span>`;
+    } else if (isDue) {
         if (daysUntil < 0) {
             timeText = `<span class="text-danger">${Math.abs(daysUntil)} days overdue</span>`;
         } else if (daysUntil === 0) {

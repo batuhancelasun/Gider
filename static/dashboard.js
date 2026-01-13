@@ -320,13 +320,17 @@ function updateRecentTransactions() {
         }
 
         list.innerHTML = combined.map(item => {
-            const daysUntil = Math.ceil((new Date(item.next_occurrence) - new Date()) / (1000 * 60 * 60 * 24));
+            const nextDate = new Date(item.next_occurrence);
+            const isValidDate = !isNaN(nextDate.getTime());
+            const daysUntil = isValidDate ? Math.ceil((nextDate - new Date()) / (1000 * 60 * 60 * 24)) : NaN;
             const isIncome = item.amount >= 0;
             const prefix = isIncome ? '+' : '-';
-            const isDue = daysUntil <= 0;
+            const isDue = daysUntil <= 0 && !isNaN(daysUntil);
         
             let timeText;
-            if (daysUntil < 0) {
+            if (!isValidDate || isNaN(daysUntil)) {
+                timeText = `<span class="text-muted">Invalid date</span>`;
+            } else if (daysUntil < 0) {
                 timeText = `<span class="text-danger" style="font-weight: 600;">${Math.abs(daysUntil)}d overdue</span>`;
             } else if (daysUntil === 0) {
                 timeText = `<span class="text-warning" style="font-weight: 600;">Due today</span>`;

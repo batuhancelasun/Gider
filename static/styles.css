@@ -1492,6 +1492,7 @@ body::before {
     color: var(--text-primary);
     -webkit-appearance: none;
     -moz-appearance: textfield;
+    appearance: none;
 }
 
 .checkout-item input:focus {
@@ -1503,11 +1504,13 @@ body::before {
 .checkout-item input[type="number"]::-webkit-inner-spin-button,
 .checkout-item input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
+    appearance: none;
     margin: 0;
 }
 
 .checkout-item input[type="number"] {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .checkout-item .qty-input {

@@ -58,6 +58,16 @@ export const DashboardView = {
                 </div>
             </div>
 
+                <div class="upcoming-card animate-slide-up">
+                    <div class="transactions-header">
+                        <h3 class="transactions-title" id="upcomingTitle"></h3>
+                        <a href="/notifications" class="btn btn-ghost" data-link id="viewAllNotifBtn">View All</a>
+                    </div>
+                    <div class="upcoming-list" id="upcomingList">
+                        <div class="empty-state" id="emptyUpcoming"></div>
+                    </div>
+                </div>
+
             <div class="transactions-card animate-slide-up">
                 <div class="transactions-header">
                     <h3 class="transactions-title" id="recentTitle"></h3>

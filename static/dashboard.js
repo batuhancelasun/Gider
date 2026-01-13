@@ -10,6 +10,7 @@ import {
 
 let expenseChart = null;
 let comparisonChart = null;
+let upcomingTransactions = { due: [], upcoming: [] };
 
 // Export init function
 export async function initDashboard() {
@@ -27,6 +28,7 @@ export async function initDashboard() {
     // You cannot reassign an imported binding. "allTransactions = ..." will fail if imported.
     // Solution: core.js should export a function `setAllTransactions(data)`.
     await loadTransactions();
+        await loadUpcomingTransactions();
     updateDashboard();
     
     // Expose functions to window for use by core.js after saving transactions
@@ -49,6 +51,15 @@ export async function loadTransactions() {
         showToast('error', 'Error', 'Failed to load transactions');
     }
 }
+
+    async function loadUpcomingTransactions() {
+        try {
+            const response = await fetch('/api/recurring/notifications', { headers: auth.getHeaders() });
+            upcomingTransactions = await response.json();
+        } catch (error) {
+            console.error('Failed to load upcoming transactions:', error);
+        }
+    }
 
 function getCurrentMonthTransactions() {
     const now = new Date();
@@ -95,6 +106,7 @@ export function updateDashboard() {
 
     updateExpenseChart(monthTransactions);
     updateComparisonChart(income, expenses);
+        updateUpcomingTransactions();
     updateRecentTransactions();
 }
 
@@ -282,3 +294,61 @@ function updateRecentTransactions() {
         `;
     }).join('');
 }
+
+    function updateUpcomingTransactions() {
+        const list = document.getElementById('upcomingList');
+        const title = document.getElementById('upcomingTitle');
+        if (!list || !title) return;
+
+        // Get icon function
+        const upcomingIcon = document.createElement('div');
+        upcomingIcon.innerHTML = getIcon('bell', 18);
+        title.innerHTML = `${upcomingIcon.innerHTML} Upcoming Transactions`;
+
+        const { due = [], upcoming = [] } = upcomingTransactions;
+        const combined = [...due, ...upcoming].slice(0, 5);
+
+        if (combined.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    ${getIcon('check-circle', 48)}
+                    <p>No upcoming transactions</p>
+                    <p class="text-muted" style="font-size: 0.85rem;">All recurring transactions are up to date</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = combined.map(item => {
+            const daysUntil = Math.ceil((new Date(item.next_occurrence) - new Date()) / (1000 * 60 * 60 * 24));
+            const isIncome = item.amount >= 0;
+            const prefix = isIncome ? '+' : '-';
+            const isDue = daysUntil <= 0;
+        
+            let timeText;
+            if (daysUntil < 0) {
+                timeText = `<span class="text-danger" style="font-weight: 600;">${Math.abs(daysUntil)}d overdue</span>`;
+            } else if (daysUntil === 0) {
+                timeText = `<span class="text-warning" style="font-weight: 600;">Due today</span>`;
+            } else {
+                timeText = `<span class="text-muted">In ${daysUntil}d</span>`;
+            }
+
+            return `
+                <div class="transaction-item ${isIncome ? 'income' : 'expense'} ${isDue ? 'due' : ''}" style="cursor: pointer;" onclick="window.router?.navigate('/recurring') || (window.location.href='/recurring')">
+                    <div class="transaction-icon">${getIcon(isIncome ? 'trending-up' : 'trending-down', 20)}</div>
+                    <div class="transaction-info">
+                        <div class="transaction-name">${item.name}</div>
+                        <div class="transaction-meta">
+                            <span class="transaction-category">${item.frequency}</span>
+                            <span>•</span>
+                            <span>${formatDateShort(item.next_occurrence)}</span>
+                            <span>•</span>
+                            ${timeText}
+                        </div>
+                    </div>
+                    <div class="transaction-amount">${prefix}${formatCurrency(Math.abs(item.amount))}</div>
+                </div>
+            `;
+        }).join('');
+    }

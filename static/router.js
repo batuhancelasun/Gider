@@ -110,5 +110,8 @@ export const router = {
 
         // Initial Load
         this.navigate(window.location.pathname);
+        
+            // Expose to window for view components
+            window.router = this;
     }
 };

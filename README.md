@@ -1,139 +1,119 @@
-# Expense Tracker
+# Gider
 
-A simple, self-hosted expense and income tracking application with a beautiful UI, similar to ExpenseOwl. Track your expenses and income with categories, tags, and monthly visualizations.
+A self-hosted expense and income tracker with recurring reminders, browser/PWA notifications, and a responsive SPA UI.
 
 ## Features
 
-- 💰 **Expense & Income Tracking** - Track both expenses and income in one place
-- 📊 **Monthly Dashboard** - Visual pie chart showing expense breakdown by category
-- 📈 **Cashflow Overview** - See total income, expenses, and net balance at a glance
-- 🏷️ **Categories & Tags** - Organize transactions with categories and optional tags
-- 📅 **Custom Start Date** - Configure which day of the month your budget cycle starts
-- 🌓 **Dark/Light Theme** - Automatic theme switching based on system preferences
-- 📋 **Table View** - Detailed table view of all transactions with search
-- ⚙️ **Settings Page** - Customize currency symbol, theme, and more
-- 📤 **Import/Export** - Export data as CSV or import from CSV files
-- 🐳 **Docker Ready** - Easy deployment with Docker and Docker Compose
+- 💰 **Expense & Income Tracking** — items, categories, tags, income/expense flags
+- 📊 **Dashboard & Charts** — net balance, category breakdown, recent activity
+- 🔔 **Notifications & PWA** — Notifications tab, browser alerts, installable PWA with service worker/manifest
+- 🔁 **Recurring Transactions** — lead-time reminders and due/upcoming visibility on dashboard
+- 📥 **Import/Export** — CSV in/out; itemized transaction support
+- ⚙️ **Settings** — currency symbol, start day, theme, notifications toggle/lead days, Gemini API key for receipt OCR
+- 🔒 **Auth** — username/password with JWT
+- 🐳 **Docker Ready** — one-command up via Docker Compose
 
-## Quick Start
+## Quick start (Docker Compose)
 
-### Using Docker Compose
+1) Optional: create `.env` or edit variables in [docker-compose.yml](docker-compose.yml):
 
-1. Clone or download this repository
-2. Build and run:
-   ```bash
-   docker-compose up -d
-   ```
-3. Access the application at `http://localhost:8080`
-
-The Docker image is automatically built and pushed to DockerHub on every push to the main/master branch via GitHub Actions.
-
-### Building the Docker Image
-
-#### Manual Build
-
-```bash
-docker build -t batubaba619/expense-tracker:latest .
-docker push batubaba619/expense-tracker:latest
+```env
+PORT=8080
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin
+# Optional: GEMINI_API_KEY=your_api_key
 ```
 
-#### Automatic Build (GitHub Actions)
+2) Run:
 
-The repository includes GitHub Actions workflows that automatically build and push Docker images to DockerHub when you push to the main/master branch.
+```bash
+docker compose up -d
+```
 
-**Setup Instructions:**
+3) Open http://localhost:8080 and log in with the credentials above.
 
-1. Go to your GitHub repository settings
-2. Navigate to **Secrets and variables** → **Actions**
-3. Add a new secret named `DOCKERHUB_TOKEN` with your DockerHub access token
-   - To create a token: DockerHub → Account Settings → Security → New Access Token
-4. Push to the main/master branch and the workflow will automatically build and push the image
+Data persists in the `gider-data` volume. Adjust `ports` or volume path in [docker-compose.yml](docker-compose.yml) as needed.
 
-The image will be available at: `batubaba619/expense-tracker:latest`
+### Manual Docker build/push
 
-### Running Locally (Without Docker)
+```bash
+docker build -t batubaba619/gider:latest .
+docker push batubaba619/gider:latest
+```
 
-1. Install Python 3.11 or later
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run:
-   ```bash
-   python app.py
-   ```
-4. Access the application at `http://localhost:8080`
+### GitHub Actions (automated build)
 
-## Usage
+- Add `DOCKERHUB_TOKEN` (and optionally `DOCKERHUB_USERNAME`) as repo secrets.
+- Push to main/master; the workflow builds and pushes `batubaba619/gider:latest`.
 
-### Dashboard (`/`)
-- View monthly income, expenses, and net balance
-- See expense breakdown in a pie chart
-- View recent transactions
-- Add new transactions
+## Running locally (without Docker)
 
-### Table View (`/table.html`)
-- View all transactions in a table
-- Search and filter transactions
-- Edit or delete transactions
-
-### Settings (`/settings.html`)
-- Configure currency symbol
-- Set custom start date for monthly cycles
-- Choose theme (light, dark, or auto)
-- Manage categories
-- Import/Export data as CSV
+```bash
+python -m venv .venv
+./.venv/Scripts/activate  # Windows
+pip install -r requirements.txt
+python app.py
+# visit http://localhost:8080
+```
 
 ## API Endpoints
 
-### Transactions
-- `GET /api/transactions` - Get all transactions
-- `POST /api/transactions` - Create a new transaction
-- `GET /api/transactions/{id}` - Get a specific transaction
-- `PUT /api/transactions/{id}` - Update a transaction
-- `DELETE /api/transactions/{id}` - Delete a transaction
+### Auth
+- `POST /api/login` — obtain JWT
 
-### Recurring Transactions
-- `GET /api/recurring` - Get all recurring transactions
-- `POST /api/recurring` - Create a recurring transaction
-- `PUT /api/recurring/{id}` - Update a recurring transaction
-- `DELETE /api/recurring/{id}` - Delete a recurring transaction
+### Transactions
+- `GET /api/transactions` — list
+- `POST /api/transactions` — create
+- `GET /api/transactions/{id}` — detail
+- `PUT /api/transactions/{id}` — update
+- `DELETE /api/transactions/{id}` — delete
+
+### Recurring
+- `GET /api/recurring` — list
+- `POST /api/recurring` — create
+- `PUT /api/recurring/{id}` — update
+- `DELETE /api/recurring/{id}` — delete
+- `GET /api/recurring/notifications` — due/upcoming payload for reminders
 
 ### Categories
-- `GET /api/categories` - Get all categories
+- `GET /api/categories` — list
+- `POST /api/categories` — create
+- `PUT /api/categories/{id}` — update
+- `DELETE /api/categories/{id}` — delete
 
 ### Settings
-- `GET /api/settings` - Get current settings
-- `PUT /api/settings` - Update settings
+- `GET /api/settings` — current settings
+- `PUT /api/settings` — update settings
 
-## Data Storage
+## Data storage
 
-Data is stored in JSON format in the `./data` directory (or `/app/data` in Docker). The data file is automatically created on first run.
+- JSON files under `./data` (or `/app/data` in Docker). Auto-created on first run.
+- Volume `gider-data` in Compose keeps data between restarts.
 
-## Transaction Format
+## Transaction format
 
 ```json
 {
-  "id": "unique-id",
-  "name": "Transaction name",
-  "category": "Category name",
-  "amount": -100.00,  // Negative for expenses, positive for income
-  "date": "2024-01-15T00:00:00Z",
-  "tags": ["tag1", "tag2"],
-  "is_income": false,
-  "description": "Optional description"
+   "id": "unique-id",
+   "name": "Transaction name",
+   "category": "Category name",
+   "amount": -100.0,
+   "date": "2024-01-15T00:00:00Z",
+   "tags": ["tag1", "tag2"],
+   "is_income": false,
+   "description": "Optional description",
+   "items": [
+      { "name": "Item", "quantity": 1, "price": 10 }
+   ]
 }
 ```
 
-## CSV Import Format
+## CSV import format
 
-CSV files must contain the following columns (case-insensitive):
-- `name` - Transaction name
-- `category` - Category name
-- `amount` - Amount (positive for income, negative for expenses)
-- `date` - Date in RFC3339 format or YYYY-MM-DD format
+Required columns (case-insensitive): `name`, `category`, `amount`, `date`
 
 Example:
+
 ```csv
 name,category,amount,date
 "Groceries","Food",-50.00,"2024-01-15"
@@ -142,53 +122,46 @@ name,category,amount,date
 
 ## Configuration
 
-### Environment Variables
+Environment variables:
+- `PORT` (default 8080)
+- `ADMIN_USERNAME` / `ADMIN_PASSWORD`
+- `GEMINI_API_KEY` (optional, receipt OCR)
 
-- `PORT` - Server port (default: 8080)
+In-app settings: currency symbol, start day, theme (light/dark/auto), notifications enabled, notification lead days, categories, CSV import/export, Gemini key.
 
-### Settings (via UI)
+## PWA & notifications
 
-- **Currency Symbol** - Symbol to display for amounts (default: $)
-- **Start Date** - Day of month when budget cycle starts (default: 1)
-- **Theme** - UI theme: light, dark, or auto (default: auto)
+- Installable PWA (manifest + service worker). Works offline for cached assets.
+- Notifications tab shows due/upcoming recurring items; browser notifications if permission granted.
+- Dashboard surfaces upcoming recurring items.
 
 ## Development
 
-### Project Structure
-
 ```
-.
-├── app.py                   # Flask application (main entry point)
-├── requirements.txt         # Python dependencies
-├── static/
-│   ├── index.html           # Dashboard page
-│   ├── table.html           # Table view page
-│   ├── settings.html        # Settings page
-│   ├── styles.css           # Stylesheet
-│   ├── dashboard.js         # Dashboard logic
-│   ├── table.js             # Table view logic
-│   └── settings.js          # Settings logic
-├── data/                    # Data directory (created automatically)
-│   └── data.json            # JSON data storage
-├── Dockerfile
-├── docker-compose.yml
-├── Makefile
-└── README.md
+app.py                   # Flask API entrypoint
+requirements.txt         # Python deps
+static/
+   index.html             # Shell
+   app.js / router.js     # SPA wiring
+   core.js                # shared helpers/auth
+   views/                 # dashboard, transactions, analytics, recurring, notifications, settings, items
+   sw.js                  # service worker (PWA/cache)
+data/                    # JSON storage (created automatically)
+Dockerfile
+docker-compose.yml
+Makefile
+README.md
 ```
 
-## Security Note
+## Security
 
-⚠️ **This application does not include authentication.** It is intended for personal/home use behind a reverse proxy with authentication (e.g., Authelia, Nginx Proxy Manager, etc.).
-
-## License
-
-MIT License
+- JWT auth with username/password. For internet exposure, still recommend a reverse proxy (TLS, rate limits, optional SSO) in front.
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
-- Code follows the existing patterns
-- Frontend uses vanilla HTML/CSS/JS (no frameworks)
-- Backend uses Python with Flask
-- Changes maintain simplicity
+PRs welcome! Please:
+- Keep frontend vanilla HTML/CSS/JS.
+- Match existing patterns and formatting.
+- Preserve simplicity and PWA/offline friendliness.
+- Add tests where practical and keep API/README updated.
 

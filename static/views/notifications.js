@@ -120,6 +120,8 @@ function renderNotificationItem(item, isDue) {
     const prefix = isIncome ? '+' : '-';
     
     let timeText;
+    let dateText = isValidDate ? formatDateShort(item.next_occurrence) : 'Invalid Date';
+    
     if (!isValidDate || isNaN(daysUntil)) {
         timeText = `<span class="text-muted">Invalid date</span>`;
     } else if (isDue) {
@@ -144,7 +146,7 @@ function renderNotificationItem(item, isDue) {
                 <div class="notification-meta">
                     <span>${item.frequency}</span>
                     <span>•</span>
-                    <span>${formatDateShort(item.next_occurrence)}</span>
+                    <span>${dateText}</span>
                     <span>•</span>
                     ${timeText}
                 </div>

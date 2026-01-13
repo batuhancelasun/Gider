@@ -326,6 +326,7 @@ function updateRecentTransactions() {
             const isIncome = item.amount >= 0;
             const prefix = isIncome ? '+' : '-';
             const isDue = daysUntil <= 0 && !isNaN(daysUntil);
+            const dateText = isValidDate ? formatDateShort(item.next_occurrence) : 'Invalid Date';
         
             let timeText;
             if (!isValidDate || isNaN(daysUntil)) {
@@ -346,7 +347,7 @@ function updateRecentTransactions() {
                         <div class="transaction-meta">
                             <span class="transaction-category">${item.frequency}</span>
                             <span>•</span>
-                            <span>${formatDateShort(item.next_occurrence)}</span>
+                            <span>${dateText}</span>
                             <span>•</span>
                             ${timeText}
                         </div>

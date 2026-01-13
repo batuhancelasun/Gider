@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gider-v21';
+const CACHE_NAME = 'gider-v22';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

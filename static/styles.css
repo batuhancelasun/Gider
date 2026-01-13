@@ -1846,37 +1846,37 @@ body::before {
         font-weight: 600;
         color: var(--text-secondary);
     }
+}
 
-    @media (max-width: 768px) {
-        .notifications-section {
-            border-radius: var(--radius-md);
-        }
+@media (max-width: 768px) {
+    .notifications-section {
+        border-radius: var(--radius-md);
+    }
 
-        .section-header {
-            padding: 0.875rem 1rem;
-        }
+    .section-header {
+        padding: 0.875rem 1rem;
+    }
 
-        .notification-item {
-            grid-template-columns: auto 1fr;
-            grid-template-areas:
-                "icon amount"
-                "icon content";
-            row-gap: 0.4rem;
-        }
+    .notification-item {
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+            "icon amount"
+            "icon content";
+        row-gap: 0.4rem;
+    }
 
-        .notification-icon { grid-area: icon; }
-        .notification-content { grid-area: content; }
-        .notification-amount { grid-area: amount; text-align: right; }
+    .notification-icon { grid-area: icon; }
+    .notification-content { grid-area: content; }
+    .notification-amount { grid-area: amount; text-align: right; }
 
-        .notification-title {
-            white-space: normal;
-            line-height: 1.3;
-        }
+    .notification-title {
+        white-space: normal;
+        line-height: 1.3;
+    }
 
-        .notification-meta {
-            font-size: 0.78rem;
-            gap: 0.35rem;
-        }
+    .notification-meta {
+        font-size: 0.78rem;
+        gap: 0.35rem;
     }
 
 

@@ -55,8 +55,11 @@ export const NotificationsView = {
         await loadNotifications();
         renderNotifications();
         
-        // Set up polling
-        setInterval(loadNotifications, 60000);
+        // Set up polling and re-render
+        setInterval(async () => {
+            await loadNotifications();
+            renderNotifications();
+        }, 60000);
     }
 };
 

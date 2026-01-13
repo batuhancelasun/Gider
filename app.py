@@ -490,7 +490,7 @@ def get_recurring_notifications(current_user_id):
             'amount': rt.get('amount', 0),
             'category': rt.get('category', ''),
             'frequency': rt.get('frequency', 'monthly'),
-            'next_date': next_date.isoformat(),
+            'next_occurrence': next_date.isoformat(),
             'is_income': rt.get('is_income', False)
         }
 

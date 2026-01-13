@@ -186,14 +186,6 @@ function renderNotificationItem(item, isDue) {
         return `<div class="notification-item" style="padding: 1rem; color: var(--danger);">Error displaying item</div>`;
     }
 }
-                </div>
-            </div>
-            <div class="notification-amount ${isIncome ? 'income' : 'expense'}">
-                ${prefix}${formatCurrency(Math.abs(item.amount))}
-            </div>
-        </div>
-    `;
-}
 
 window.handleNotificationClick = function(id) {
     // Navigate to recurring page

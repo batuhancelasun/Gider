@@ -52,103 +52,140 @@ export const NotificationsView = {
     `,
 
     init: async () => {
-        await loadNotifications();
-        renderNotifications();
-        
-        // Set up polling and re-render
-        setInterval(async () => {
+        try {
+            console.log('Notifications view init started');
             await loadNotifications();
+            console.log('Notifications loaded:', notifications);
             renderNotifications();
-        }, 60000);
+            console.log('Notifications rendered');
+            
+            // Set up polling and re-render
+            setInterval(async () => {
+                try {
+                    await loadNotifications();
+                    renderNotifications();
+                } catch (err) {
+                    console.error('Polling error:', err);
+                }
+            }, 60000);
+        } catch (error) {
+            console.error('Notifications init error:', error);
+            showToast('error', 'Error', 'Failed to initialize notifications');
+        }
     }
 };
 
 async function loadNotifications() {
     try {
-        const [notifResponse, settingsResponse] = await Promise.all([
-            fetch('/api/recurring/notifications', { headers: auth.getHeaders() }),
-            fetch('/api/settings', { headers: auth.getHeaders() })
-        ]);
-        
+        const notifResponse = await fetch('/api/recurring/notifications', { headers: auth.getHeaders() });
+        if (!notifResponse.ok) {
+            throw new Error(`API error: ${notifResponse.status}`);
+        }
         notifications = await notifResponse.json();
-        settings = await settingsResponse.json();
     } catch (error) {
         console.error('Failed to load notifications:', error);
+        notifications = { due: [], upcoming: [] };
         showToast('error', 'Error', 'Failed to load notifications');
     }
 }
 
 function renderNotifications() {
-    const { due = [], upcoming = [] } = notifications;
-    
-    // Update badges
-    document.getElementById('dueBadge').textContent = due.length;
-    document.getElementById('upcomingBadge').textContent = upcoming.length;
-    
-    // Render due
-    const dueList = document.getElementById('dueList');
-    if (due.length === 0) {
-        dueList.innerHTML = `
-            <div class="empty-state">
-                ${getIcon('check-circle', 48)}
-                <p>No transactions due</p>
-            </div>
-        `;
-    } else {
-        dueList.innerHTML = due.map(item => renderNotificationItem(item, true)).join('');
-    }
-    
-    // Render upcoming
-    const upcomingList = document.getElementById('upcomingList');
-    if (upcoming.length === 0) {
-        upcomingList.innerHTML = `
-            <div class="empty-state">
-                ${getIcon('calendar', 48)}
-                <p>No upcoming transactions</p>
-            </div>
-        `;
-    } else {
-        upcomingList.innerHTML = upcoming.map(item => renderNotificationItem(item, false)).join('');
+    try {
+        const { due = [], upcoming = [] } = notifications || {};
+        
+        // Update badges
+        const dueBadge = document.getElementById('dueBadge');
+        const upcomingBadge = document.getElementById('upcomingBadge');
+        if (dueBadge) dueBadge.textContent = due.length;
+        if (upcomingBadge) upcomingBadge.textContent = upcoming.length;
+        
+        // Render due
+        const dueList = document.getElementById('dueList');
+        if (dueList) {
+            if (due.length === 0) {
+                dueList.innerHTML = `
+                    <div class="empty-state">
+                        ${getIcon('check-circle', 48)}
+                        <p>No transactions due</p>
+                    </div>
+                `;
+            } else {
+                dueList.innerHTML = due.map(item => renderNotificationItem(item, true)).join('');
+            }
+        }
+        
+        // Render upcoming
+        const upcomingList = document.getElementById('upcomingList');
+        if (upcomingList) {
+            if (upcoming.length === 0) {
+                upcomingList.innerHTML = `
+                    <div class="empty-state">
+                        ${getIcon('calendar', 48)}
+                        <p>No upcoming transactions</p>
+                    </div>
+                `;
+            } else {
+                upcomingList.innerHTML = upcoming.map(item => renderNotificationItem(item, false)).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error rendering notifications:', error);
     }
 }
 
 function renderNotificationItem(item, isDue) {
-    const nextDate = new Date(item.next_occurrence);
-    const isValidDate = !isNaN(nextDate.getTime());
-    const daysUntil = isValidDate ? Math.ceil((nextDate - new Date()) / (1000 * 60 * 60 * 24)) : NaN;
-    const isIncome = item.amount >= 0;
-    const prefix = isIncome ? '+' : '-';
-    
-    let timeText;
-    let dateText = isValidDate ? formatDateShort(item.next_occurrence) : 'Invalid Date';
-    
-    if (!isValidDate || isNaN(daysUntil)) {
-        timeText = `<span class="text-muted">Invalid date</span>`;
-    } else if (isDue) {
-        if (daysUntil < 0) {
-            timeText = `<span class="text-danger">${Math.abs(daysUntil)} days overdue</span>`;
-        } else if (daysUntil === 0) {
-            timeText = `<span class="text-warning">Due today</span>`;
+    try {
+        const nextDate = new Date(item.next_occurrence);
+        const isValidDate = !isNaN(nextDate.getTime());
+        const daysUntil = isValidDate ? Math.ceil((nextDate - new Date()) / (1000 * 60 * 60 * 24)) : NaN;
+        const isIncome = item.amount >= 0;
+        const prefix = isIncome ? '+' : '-';
+        
+        let timeText;
+        let dateText = isValidDate ? formatDateShort(item.next_occurrence) : 'Invalid Date';
+        
+        if (!isValidDate || isNaN(daysUntil)) {
+            timeText = `<span class="text-muted">Invalid date</span>`;
+        } else if (isDue) {
+            if (daysUntil < 0) {
+                timeText = `<span class="text-danger">${Math.abs(daysUntil)} days overdue</span>`;
+            } else if (daysUntil === 0) {
+                timeText = `<span class="text-warning">Due today</span>`;
+            } else {
+                timeText = `<span class="text-warning">Due in ${daysUntil} day${daysUntil > 1 ? 's' : ''}</span>`;
+            }
         } else {
-            timeText = `<span class="text-warning">Due in ${daysUntil} day${daysUntil > 1 ? 's' : ''}</span>`;
+            timeText = `<span class="text-muted">In ${daysUntil} day${daysUntil > 1 ? 's' : ''}</span>`;
         }
-    } else {
-        timeText = `<span class="text-muted">In ${daysUntil} day${daysUntil > 1 ? 's' : ''}</span>`;
-    }
-    
-    return `
-        <div class="notification-item ${isDue ? 'due' : ''}" onclick="handleNotificationClick('${item.id}')">
-            <div class="notification-icon ${isIncome ? 'income' : 'expense'}">
-                ${getIcon(isIncome ? 'trending-up' : 'trending-down', 20)}
+        
+        const itemName = (item.name || 'Unnamed').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const itemId = (item.id || '').replace(/'/g, "\\'");
+        
+        return `
+            <div class="notification-item ${isDue ? 'due' : ''}" onclick="handleNotificationClick('${itemId}')">
+                <div class="notification-icon ${isIncome ? 'income' : 'expense'}">
+                    ${getIcon(isIncome ? 'trending-up' : 'trending-down', 20)}
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${itemName}</div>
+                    <div class="notification-meta">
+                        <span>${item.frequency || 'N/A'}</span>
+                        <span>•</span>
+                        <span>${dateText}</span>
+                        <span>•</span>
+                        ${timeText}
+                    </div>
+                </div>
+                <div class="notification-amount ${isIncome ? 'income' : 'expense'}">
+                    ${prefix}${formatCurrency(Math.abs(item.amount || 0))}
+                </div>
             </div>
-            <div class="notification-content">
-                <div class="notification-title">${item.name}</div>
-                <div class="notification-meta">
-                    <span>${item.frequency}</span>
-                    <span>•</span>
-                    <span>${dateText}</span>
-                    <span>•</span>
-                    ${timeText}
+        `;
+    } catch (error) {
+        console.error('Error rendering notification item:', error, item);
+        return `<div class="notification-item" style="padding: 1rem; color: var(--danger);">Error displaying item</div>`;
+    }
+}
                 </div>
             </div>
             <div class="notification-amount ${isIncome ? 'income' : 'expense'}">

@@ -1893,11 +1893,11 @@ body::before {
 }
 
 /* ============================================
-   BOTTOM NAVIGATION (MOBILE)
+   BOTTOM NAVIGATION (MOBILE ONLY)
    ============================================ */
 
 .bottom-nav {
-    display: none;
+    display: none !important;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -1956,7 +1956,7 @@ body::before {
     }
 
     .bottom-nav {
-        display: flex;
+        display: flex !important;
         align-items: center;
     }
 

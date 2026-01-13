@@ -19,14 +19,14 @@ export const NotificationsView = {
                 <div class="notifications-section">
                     <div class="section-header">
                         <div class="section-title">
-                            ${getIcon('alert-circle', 20)}
+                            <span class="section-icon" data-icon="alert-circle" data-size="20"></span>
                             <h3>Due Now</h3>
                         </div>
                         <span class="badge" id="dueBadge">0</span>
                     </div>
                     <div class="notification-list" id="dueList">
                         <div class="empty-state">
-                            ${getIcon('check-circle', 48)}
+                            <span class="empty-icon" data-icon="check-circle" data-size="48"></span>
                             <p>No transactions due</p>
                         </div>
                     </div>
@@ -35,14 +35,14 @@ export const NotificationsView = {
                 <div class="notifications-section">
                     <div class="section-header">
                         <div class="section-title">
-                            ${getIcon('clock', 20)}
+                            <span class="section-icon" data-icon="clock" data-size="20"></span>
                             <h3>Upcoming</h3>
                         </div>
                         <span class="badge" id="upcomingBadge">0</span>
                     </div>
                     <div class="notification-list" id="upcomingList">
                         <div class="empty-state">
-                            ${getIcon('calendar', 48)}
+                            <span class="empty-icon" data-icon="calendar" data-size="48"></span>
                             <p>No upcoming transactions</p>
                         </div>
                     </div>
@@ -54,6 +54,16 @@ export const NotificationsView = {
     init: async () => {
         try {
             console.log('Notifications view init started');
+            
+            // Render icons after DOM is ready
+            document.querySelectorAll('[data-icon]').forEach(el => {
+                const iconName = el.getAttribute('data-icon');
+                const size = el.getAttribute('data-size') || 20;
+                if (window.getIcon) {
+                    el.innerHTML = window.getIcon(iconName, size);
+                }
+            });
+            
             await loadNotifications();
             console.log('Notifications loaded:', notifications);
             renderNotifications();
@@ -99,13 +109,16 @@ function renderNotifications() {
         if (dueBadge) dueBadge.textContent = due.length;
         if (upcomingBadge) upcomingBadge.textContent = upcoming.length;
         
+        const checkCircleIcon = window.getIcon ? window.getIcon('check-circle', 48) : '';
+        const calendarIcon = window.getIcon ? window.getIcon('calendar', 48) : '';
+        
         // Render due
         const dueList = document.getElementById('dueList');
         if (dueList) {
             if (due.length === 0) {
                 dueList.innerHTML = `
                     <div class="empty-state">
-                        ${getIcon('check-circle', 48)}
+                        ${checkCircleIcon}
                         <p>No transactions due</p>
                     </div>
                 `;
@@ -120,7 +133,7 @@ function renderNotifications() {
             if (upcoming.length === 0) {
                 upcomingList.innerHTML = `
                     <div class="empty-state">
-                        ${getIcon('calendar', 48)}
+                        ${calendarIcon}
                         <p>No upcoming transactions</p>
                     </div>
                 `;
@@ -160,11 +173,12 @@ function renderNotificationItem(item, isDue) {
         
         const itemName = (item.name || 'Unnamed').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const itemId = (item.id || '').replace(/'/g, "\\'");
+        const trendIcon = window.getIcon ? window.getIcon(isIncome ? 'trendingUp' : 'trendingDown', 20) : '';
         
         return `
             <div class="notification-item ${isDue ? 'due' : ''}" onclick="handleNotificationClick('${itemId}')">
                 <div class="notification-icon ${isIncome ? 'income' : 'expense'}">
-                    ${getIcon(isIncome ? 'trending-up' : 'trending-down', 20)}
+                    ${trendIcon}
                 </div>
                 <div class="notification-content">
                     <div class="notification-title">${itemName}</div>

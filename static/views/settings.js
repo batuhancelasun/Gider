@@ -261,7 +261,6 @@ async function loadSettings() {
         if (themeEl) themeEl.value = settings.theme || 'dark';
         if (notifEl) notifEl.checked = settings.notifications_enabled !== false;
         if (leadEl) leadEl.value = settings.notifications_lead_days ?? 3;
-        }
     } catch (error) {
         console.error('Failed to load settings:', error);
     }

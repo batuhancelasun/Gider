@@ -10,6 +10,8 @@ export let allTransactions = [];
 export let allCategories = [];
 export let currentTransactionType = 'expense';
 export let selectedCategoryIcon = 'other';
+let swRegistration = null;
+let VAPID_PUBLIC_KEY = window.VAPID_PUBLIC_KEY || '';
 let editItems = [];
 
 // ============================================
@@ -17,6 +19,7 @@ let editItems = [];
 // ============================================
 
 export async function initApp() {
+    await loadConfig();
     await loadSettings();
     await loadCategories(); // Load categories on app initialization
     applyTheme(settings?.theme || 'dark');
@@ -26,6 +29,20 @@ export async function initApp() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('action') === 'add') {
         openModal();
+    }
+}
+
+async function loadConfig() {
+    try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+            const cfg = await res.json();
+            if (cfg?.vapidPublicKey) {
+                setVapidPublicKey(cfg.vapidPublicKey);
+            }
+        }
+    } catch (e) {
+        console.warn('Config load failed', e);
     }
 }
 
@@ -201,13 +218,19 @@ export function initIcons() {
 // ============================================
 
 async function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        try {
-            await navigator.serviceWorker.register('/sw.js');
-        } catch (error) {
-            console.log('SW registration failed:', error);
-        }
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+        swRegistration = await navigator.serviceWorker.register('/sw.js');
+        return swRegistration;
+    } catch (error) {
+        console.log('SW registration failed:', error);
+        return null;
     }
+}
+
+async function getServiceWorkerRegistration() {
+    if (swRegistration) return swRegistration;
+    return registerServiceWorker();
 }
 
 // ============================================
@@ -251,6 +274,99 @@ function toggleTheme() {
 
 // Expose to window for inline handlers
 window.toggleTheme = toggleTheme;
+
+export function setVapidPublicKey(key) {
+    VAPID_PUBLIC_KEY = key || '';
+    window.VAPID_PUBLIC_KEY = VAPID_PUBLIC_KEY;
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function sendSubscriptionToServer(subscription) {
+    try {
+        await fetch('/api/notifications/subscribe', {
+            method: 'POST',
+            headers: auth.getHeaders(),
+            body: JSON.stringify(subscription)
+        });
+    } catch (error) {
+        console.error('Failed to store push subscription:', error);
+        throw error;
+    }
+}
+
+async function unsubscribeFromServer(subscription) {
+    try {
+        await fetch('/api/notifications/unsubscribe', {
+            method: 'POST',
+            headers: auth.getHeaders(),
+            body: JSON.stringify({ endpoint: subscription?.endpoint })
+        });
+    } catch (error) {
+        console.error('Failed to unregister push subscription:', error);
+        // Best-effort; do not throw to avoid blocking UI when server is unreachable
+    }
+}
+
+export async function syncNotificationsPreference(enable) {
+    if (!('Notification' in window)) {
+        showToast('warning', 'Not supported', 'Notifications are not available on this device');
+        return false;
+    }
+
+    const registration = await getServiceWorkerRegistration();
+    if (!registration) {
+        showToast('error', 'Error', 'Service worker not available for push');
+        return false;
+    }
+
+    const existing = await registration.pushManager.getSubscription();
+
+    if (!enable) {
+        if (existing) {
+            try {
+                await unsubscribeFromServer(existing);
+                await existing.unsubscribe();
+            } catch (error) {
+                console.error('Error unsubscribing from push:', error);
+            }
+        }
+        showToast('success', 'Notifications disabled', 'You will not receive push alerts');
+        return true;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+        showToast('warning', 'Permission needed', 'Enable notifications in your browser settings');
+        return false;
+    }
+
+    if (!VAPID_PUBLIC_KEY) {
+        showToast('warning', 'Missing VAPID key', 'Set window.VAPID_PUBLIC_KEY to enable push');
+        return false;
+    }
+
+    const subscription = existing || await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    await sendSubscriptionToServer(subscription);
+    showToast('success', 'Notifications enabled', 'Push alerts are active');
+    return true;
+}
+
+// Expose for non-module scripts
+window.syncNotificationsPreference = syncNotificationsPreference;
 
 async function saveSettings(newSettings) {
     try {

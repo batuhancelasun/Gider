@@ -1,6 +1,6 @@
 import { auth } from '../auth.js';
 import {
-    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon, loadCategories as loadCategoriesFromCore
+    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon, loadCategories as loadCategoriesFromCore, syncNotificationsPreference
 } from '../core.js';
 
 // Import categoryIcons from icons.js - we'll get it from window or define it here
@@ -71,6 +71,15 @@ export const SettingsView = {
                                     <input type="number" id="notificationLead" class="form-input" min="0" max="30" value="3">
                                     <p class="form-hint">How many days before the due date to notify for recurring items</p>
                                 </div>
+
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="saveSettingsBtn">
+                                        ${getIcon('check', 14)} Save Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     <div class="settings-card animate-slide-up">
                         <div class="settings-card-header">
                             <div class="settings-card-icon">${getIcon('tag', 18)}</div>
@@ -261,6 +270,10 @@ async function loadSettings() {
         if (themeEl) themeEl.value = settings.theme || 'dark';
         if (notifEl) notifEl.checked = settings.notifications_enabled !== false;
         if (leadEl) leadEl.value = settings.notifications_lead_days ?? 3;
+        if (geminiEl && settings.gemini_api_key) {
+            geminiEl.value = '••••••••••••••••';
+            geminiEl.dataset.hasKey = 'true';
+        }
     } catch (error) {
         console.error('Failed to load settings:', error);
     }
@@ -287,6 +300,11 @@ async function handleSettingsSubmit(e) {
         if (response.ok) {
             settings = newSettings;
             applyTheme(settings.theme);
+            try {
+                await syncNotificationsPreference(newSettings.notifications_enabled);
+            } catch (error) {
+                console.warn('Notification preference sync failed', error);
+            }
             showToast('success', 'Saved', 'Settings updated successfully');
         } else {
             throw new Error('Failed to save');

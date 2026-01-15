@@ -117,6 +117,13 @@ function setupSettingsForm() {
             if (response.ok) {
                 settings = newSettings;
                 applyTheme(settings.theme);
+                try {
+                    if (typeof syncNotificationsPreference === 'function') {
+                        await syncNotificationsPreference(newSettings.notifications_enabled);
+                    }
+                } catch (err) {
+                    console.warn('Notification preference sync failed', err);
+                }
                 showToast('success', 'Saved', 'Settings updated successfully');
             } else {
                 throw new Error('Failed to save');

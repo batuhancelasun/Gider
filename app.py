@@ -11,6 +11,8 @@ import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from pywebpush import webpush, WebPushException
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.backends import default_backend
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -265,10 +267,38 @@ def remove_subscription(current_user_id, endpoint):
     return True
 
 
+def get_vapid_private_key():
+    """Convert base64url-encoded private key to PEM format for pywebpush."""
+    if not VAPID_PRIVATE_KEY:
+        return None
+    try:
+        # Pad the base64url string if needed
+        padded = VAPID_PRIVATE_KEY + '=' * (4 - len(VAPID_PRIVATE_KEY) % 4)
+        raw_key = base64.urlsafe_b64decode(padded)
+        # Construct EC private key from raw 32-byte scalar
+        private_key = ec.derive_private_key(
+            int.from_bytes(raw_key, 'big'),
+            ec.SECP256R1(),
+            default_backend()
+        )
+        # Serialize to PEM format
+        from cryptography.hazmat.primitives import serialization
+        pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+        return pem.decode('utf-8')
+    except Exception as e:
+        print(f"Error converting VAPID private key: {e}")
+        return VAPID_PRIVATE_KEY  # fallback to raw string
+
+
 def send_web_push_to_user(current_user_id, payload):
     if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
         raise RuntimeError('VAPID keys are not configured')
 
+    vapid_key = get_vapid_private_key()
     data = load_data(current_user_id)
     subscriptions = data.get('push_subscriptions', [])
     stale = []
@@ -278,7 +308,7 @@ def send_web_push_to_user(current_user_id, payload):
             webpush(
                 subscription_info=sub,
                 data=json.dumps(payload),
-                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_private_key=vapid_key,
                 vapid_claims={'sub': VAPID_SUBJECT}
             )
         except WebPushException as e:

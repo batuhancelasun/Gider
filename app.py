@@ -279,7 +279,6 @@ def send_web_push_to_user(current_user_id, payload):
                 subscription_info=sub,
                 data=json.dumps(payload),
                 vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_public_key=VAPID_PUBLIC_KEY,
                 vapid_claims={'sub': VAPID_SUBJECT}
             )
         except WebPushException as e:

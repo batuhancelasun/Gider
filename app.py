@@ -11,8 +11,8 @@ import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from pywebpush import webpush, WebPushException
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.backends import default_backend
+from py_vapid import Vapid01
+from cryptography.hazmat.primitives import serialization
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -268,30 +268,25 @@ def remove_subscription(current_user_id, endpoint):
 
 
 def get_vapid_private_key():
-    """Convert base64url-encoded private key to PEM format for pywebpush."""
-    if not VAPID_PRIVATE_KEY:
+    """Convert VAPID keys to PEM format using py_vapid."""
+    if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
         return None
     try:
-        # Pad the base64url string if needed
-        padded = VAPID_PRIVATE_KEY + '=' * (4 - len(VAPID_PRIVATE_KEY) % 4)
-        raw_key = base64.urlsafe_b64decode(padded)
-        # Construct EC private key from raw 32-byte scalar
-        private_key = ec.derive_private_key(
-            int.from_bytes(raw_key, 'big'),
-            ec.SECP256R1(),
-            default_backend()
+        vapid = Vapid01()
+        vapid.from_string(
+            private_key=VAPID_PRIVATE_KEY,
+            public_key=VAPID_PUBLIC_KEY
         )
-        # Serialize to PEM format
-        from cryptography.hazmat.primitives import serialization
-        pem = private_key.private_bytes(
+        # Serialize the private key to PEM format
+        pem = vapid.private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         )
         return pem.decode('utf-8')
     except Exception as e:
-        print(f"Error converting VAPID private key: {e}")
-        return VAPID_PRIVATE_KEY  # fallback to raw string
+        print(f"Error converting VAPID keys: {e}")
+        return None
 
 
 def send_web_push_to_user(current_user_id, payload):
@@ -299,6 +294,9 @@ def send_web_push_to_user(current_user_id, payload):
         raise RuntimeError('VAPID keys are not configured')
 
     vapid_key = get_vapid_private_key()
+    if not vapid_key:
+        raise RuntimeError('Failed to process VAPID private key')
+
     data = load_data(current_user_id)
     subscriptions = data.get('push_subscriptions', [])
     stale = []

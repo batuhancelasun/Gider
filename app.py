@@ -11,7 +11,9 @@ import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from pywebpush import webpush, WebPushException
-from py_vapid import Vapid01
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -267,20 +269,27 @@ def remove_subscription(current_user_id, endpoint):
 
 
 def get_vapid_private_key_pem():
-    """Get VAPID private key in PEM format using py_vapid."""
-    if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+    """Convert base64url VAPID private key to PEM format."""
+    if not VAPID_PRIVATE_KEY:
         return None
     try:
-        vapid = Vapid01()
-        # Load from base64url strings
-        vapid.from_raw(
-            private_key=base64.urlsafe_b64decode(VAPID_PRIVATE_KEY + '=='),
-            public_key=base64.urlsafe_b64decode(VAPID_PUBLIC_KEY + '==')
+        # Decode base64url to raw bytes (add padding if needed)
+        padded = VAPID_PRIVATE_KEY + '=' * (4 - len(VAPID_PRIVATE_KEY) % 4)
+        raw_bytes = base64.urlsafe_b64decode(padded)
+        
+        # Create EC private key from 32-byte scalar
+        d = int.from_bytes(raw_bytes, 'big')
+        private_key = ec.derive_private_key(d, ec.SECP256R1(), default_backend())
+        
+        # Serialize to PEM
+        pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
         )
-        # Return private key in PEM format
-        return vapid.private_key_pem
+        return pem.decode('utf-8')
     except Exception as e:
-        print(f"Error loading VAPID keys: {e}")
+        print(f"Error converting VAPID private key to PEM: {e}")
         return None
 
 
@@ -290,7 +299,7 @@ def send_web_push_to_user(current_user_id, payload):
 
     vapid_pem = get_vapid_private_key_pem()
     if not vapid_pem:
-        raise RuntimeError('Failed to load VAPID private key')
+        raise RuntimeError('Failed to convert VAPID private key to PEM')
 
     data = load_data(current_user_id)
     subscriptions = data.get('push_subscriptions', [])

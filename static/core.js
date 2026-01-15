@@ -551,9 +551,9 @@ async function loadTransactionForEdit(id) {
     document.getElementById('tags').value = transaction.tags ? transaction.tags.join(', ') : '';
     document.getElementById('description').value = transaction.description || '';
 
-    editItems = (transaction.items || []).map(item => ({
-        name: item.name || '',
-    
+    setTransactionType(transaction.is_income ? 'income' : 'expense');
+}
+
 // ============================================
 // TRANSACTION TYPE TOGGLE
 // ============================================

@@ -25,6 +25,9 @@ export const NotificationsView = {
                     <h1 class="page-title">Notifications</h1>
                     <p class="page-subtitle">Upcoming reminders and alerts</p>
                 </div>
+                <button class="btn btn-secondary" onclick="window.createTestNotification()" style="height: fit-content;">
+                    ${ICONS.bell} Test Notification
+                </button>
             </div>
 
             <div class="notifications-container">
@@ -295,5 +298,26 @@ window.deleteNotification = async function(notificationId) {
         }
     } catch (error) {
         showToast('error', 'Error', 'Failed to delete notification');
+    }
+};
+
+window.createTestNotification = async function() {
+    try {
+        const response = await fetch('/api/notifications/test', {
+            method: 'POST',
+            headers: auth.getHeaders(),
+            body: JSON.stringify({
+                title: 'Payment Reminder',
+                body: 'Your rent payment of €1,200 is due tomorrow',
+                type: 'recurring'
+            })
+        });
+        if (response.ok) {
+            await loadAllNotifications();
+            renderAllNotifications();
+            showToast('success', 'Test notification created', '');
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to create test notification');
     }
 };

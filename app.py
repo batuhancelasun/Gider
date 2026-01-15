@@ -557,8 +557,7 @@ def get_recurring_notifications(current_user_id):
     """Return recurring transactions that are due today or coming up soon."""
     data = load_data(current_user_id)
     today = datetime.now().date()
-    horizon_days = data.get('settings', {}).get('notifications_lead_days', 3)
-    horizon = today + timedelta(days=horizon_days)
+    horizon = today + timedelta(days=7)  # Fixed 7-day horizon
 
     due = []
     upcoming = []
@@ -594,13 +593,29 @@ def get_recurring_notifications(current_user_id):
 def get_notifications(current_user_id):
     """Get all non-deleted notifications for the user."""
     # First, sync recurring notifications for today
-    sync_recurring_notifications(current_user_id)
+    try:
+        sync_recurring_notifications(current_user_id)
+    except Exception as e:
+        print(f"Error syncing recurring notifications: {e}")
     
     data = load_data(current_user_id)
     notifications = [n for n in data.get('notifications', []) if not n.get('deleted_at')]
     # Sort by creation date (newest first)
     notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
     return jsonify(notifications)
+
+
+@app.route('/api/notifications/test', methods=['POST'])
+@login_required
+def create_test_notification(current_user_id):
+    """Create a test notification (for testing purposes)."""
+    body = request.json or {}
+    title = body.get('title', 'Test Notification')
+    message = body.get('body', 'This is a test notification')
+    notif_type = body.get('type', 'info')
+    
+    notif = create_notification(current_user_id, title, message, notif_type)
+    return jsonify(notif), 201
 
 
 @app.route('/api/notifications/<notification_id>/read', methods=['PUT'])

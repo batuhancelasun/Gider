@@ -1,6 +1,6 @@
 import { auth } from '../auth.js';
 import {
-    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon, loadCategories as loadCategoriesFromCore, syncNotificationsPreference
+    getIcon, showToast, applyTheme, allCategories, selectedCategoryIcon as coreSelectedIcon, loadCategories as loadCategoriesFromCore, syncNotificationsPreference, reloadSettings
 } from '../core.js';
 
 // Import categoryIcons from icons.js - we'll get it from window or define it here
@@ -291,6 +291,7 @@ async function handleSettingsSubmit(e) {
 
         if (response.ok) {
             settings = newSettings;
+            await reloadSettings(); // Reload settings from server
             applyTheme(settings.theme);
             try {
                 await syncNotificationsPreference(newSettings.notifications_enabled);

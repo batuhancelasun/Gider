@@ -248,11 +248,19 @@ async function loadSettings() {
         const response = await fetch('/api/settings', {
             headers: auth.getHeaders()
         });
-        settings = await response.json();
+        if (response.ok) {
+            settings = await response.json();
+        } else {
+            settings = { currency_symbol: '$', start_date: 1, theme: 'dark' };
+        }
     } catch (error) {
         console.error('Failed to load settings:', error);
         settings = { currency_symbol: '$', start_date: 1, theme: 'dark' };
     }
+}
+
+export async function reloadSettings() {
+    await loadSettings();
 }
 
 export function applyTheme(theme) {
@@ -324,55 +332,9 @@ async function unsubscribeFromServer(subscription) {
 }
 
 export async function syncNotificationsPreference(enable) {
-    if (!('Notification' in window)) {
-        showToast('warning', 'Not supported', 'Notifications are not available on this device');
-        return false;
-    }
-
-    const registration = await getServiceWorkerRegistration();
-    if (!registration) {
-        showToast('error', 'Error', 'Service worker not available for push');
-        return false;
-    }
-
-    const existing = await registration.pushManager.getSubscription();
-
-    if (!enable) {
-        if (existing) {
-            try {
-                await unsubscribeFromServer(existing);
-                await existing.unsubscribe();
-            } catch (error) {
-                console.error('Error unsubscribing from push:', error);
-            }
-        }
-        showToast('success', 'Notifications disabled', 'You will not receive push alerts');
-        return true;
-    }
-
-    // Try to populate VAPID key lazily if missing
-    if (!VAPID_PUBLIC_KEY) {
-        await ensureVapidKey();
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-        showToast('warning', 'Permission needed', 'Enable notifications in your browser settings');
-        return false;
-    }
-
-    if (!VAPID_PUBLIC_KEY) {
-        showToast('warning', 'Missing VAPID key', 'Set window.VAPID_PUBLIC_KEY to enable push');
-        return false;
-    }
-
-    const subscription = existing || await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-    });
-
-    await sendSubscriptionToServer(subscription);
-    showToast('success', 'Notifications enabled', 'Push alerts are active');
+    // Notifications are now in-app only, no push subscription needed
+    // Just log the preference change
+    console.log('Notifications preference:', enable ? 'enabled' : 'disabled');
     return true;
 }
 

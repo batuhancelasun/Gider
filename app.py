@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import uuid
 import base64
-import re
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -123,8 +122,7 @@ def load_data(user_id):
             'start_date': 1,
             'theme': 'dark',
             'gemini_api_key': '',
-            'notifications_enabled': True,
-            'notifications_lead_days': 3
+            'notifications_enabled': True
         }
     else:
         data['settings'].setdefault('notifications_enabled', True)
@@ -429,10 +427,6 @@ def update_transaction(current_user_id, transaction_id):
     
     for i, transaction in enumerate(data['transactions']):
         if transaction['id'] == transaction_id:
-            # Preserve existing items when none are provided
-            incoming_items = updated_transaction.get('items') if 'items' in updated_transaction else transaction.get('items', [])
-            updated_transaction['items'] = incoming_items
-
             data['transactions'][i] = updated_transaction
             save_data(current_user_id, data)
             return jsonify(updated_transaction)
@@ -658,21 +652,10 @@ def update_settings(current_user_id):
     # Merge to retain unspecified keys
     merged = data.get('settings', {}).copy()
     merged.update(incoming)
-    try:
-        merged['notifications_lead_days'] = max(0, int(merged.get('notifications_lead_days', 3)))
-    except Exception:
-        merged['notifications_lead_days'] = 3
     data['settings'] = merged
     save_data(current_user_id, data)
     return jsonify(data['settings'])
 
-
-@app.route('/api/config', methods=['GET'])
-def get_config():
-    """Public config for frontend bootstrapping (no auth needed)."""
-    return jsonify({
-        'vapidPublicKey': VAPID_PUBLIC_KEY
-    })
 
 # Receipt Scanner API
 @app.route('/api/scan-receipt', methods=['POST'])
@@ -712,38 +695,24 @@ def scan_receipt(current_user_id):
         categories = data['categories']
         expense_categories = [c['name'] for c in categories if c['type'] in ['expense', 'both']]
         
-        # Create detailed prompt for item extraction
-        prompt = f"""Analyze this receipt image and extract ALL information in JSON format:
+        # Simple prompt to extract key receipt info
+        prompt = f"""Analyze this receipt image and extract the key information in JSON format:
 {{
     "store_name": "Name of the store/merchant",
-    "store_address": "Store address if visible",
+    "subtotal": "Subtotal/price before tax as a number (e.g., 23.50)",
+    "tax": "Tax amount as a number (e.g., 2.49)",
     "total": "Total/Grand total amount as a number (e.g., 25.99)",
-    "subtotal": "Subtotal before tax if visible",
-    "tax": "Tax amount if visible",
     "date": "Date in YYYY-MM-DD format if visible, otherwise null",
-    "time": "Time if visible (HH:MM format)",
-    "payment_method": "Cash, Card, etc. if visible",
-    "items": [
-        {{
-            "name": "Item name",
-            "quantity": 1,
-            "price": 5.99
-        }}
-    ],
     "category": "Best matching category from: {', '.join(expense_categories)}"
 }}
 
-IMPORTANT RULES:
-1. Extract EVERY line item from the receipt with name, quantity, and individual price
-2. The "total" should be the FINAL/GRAND TOTAL, not subtotals
-3. For quantity, if not specified assume 1
-4. For item price, use the unit price not line total
+RULES:
+1. The "total" should be the FINAL/GRAND TOTAL amount (subtotal + tax)
+2. "subtotal" is the price before tax
+3. "tax" is the tax amount (VAT, sales tax, MwSt, etc.)
+4. If tax is not visible, calculate: tax = total - subtotal
 5. If information is unclear or not visible, use null
-6. Return ONLY valid JSON, no markdown or extra text
-7. Be thorough - extract ALL items visible on the receipt
-8. GROUP IDENTICAL ITEMS: If the same item appears multiple times (e.g., "LidlPlus Rabatt" appears 4 times), 
-   combine them into a single item with the total quantity (e.g., quantity: 4) and the unit price
-9. Use exact item names as they appear on the receipt - do not modify or abbreviate names"""
+6. Return ONLY valid JSON, no markdown or extra text"""
         
         # Use Gemini 2.0 Flash model
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
@@ -760,51 +729,26 @@ IMPORTANT RULES:
         
         result = json.loads(response_text)
         
-        # Process items and group duplicates
-        items_dict = {}
-        if result.get('items'):
-            for item in result['items']:
-                name = item.get('name', 'Unknown Item').strip()
-                quantity = int(item.get('quantity', 1)) if item.get('quantity') else 1
-                price = float(item.get('price', 0)) if item.get('price') else 0
-                
-                # Normalize name for grouping (case-insensitive, trim whitespace)
-                name_key = name.lower().strip()
-                
-                # If item already exists, combine quantities
-                if name_key in items_dict:
-                    items_dict[name_key]['quantity'] += quantity
-                    # Use the average price if prices differ slightly, or keep the first price
-                    if abs(items_dict[name_key]['price'] - price) > 0.01:
-                        # If prices differ significantly, use weighted average
-                        total_qty = items_dict[name_key]['quantity']
-                        old_total = items_dict[name_key]['price'] * (total_qty - quantity)
-                        new_total = price * quantity
-                        items_dict[name_key]['price'] = (old_total + new_total) / total_qty
-                else:
-                    items_dict[name_key] = {
-                        'name': name,  # Keep original casing
-                        'quantity': quantity,
-                        'price': price
-                    }
+        # Parse numeric values
+        total = float(result.get('total', 0)) if result.get('total') else 0
+        subtotal = float(result.get('subtotal', 0)) if result.get('subtotal') else None
+        tax = float(result.get('tax', 0)) if result.get('tax') else None
         
-        # Convert dict back to list
-        items = list(items_dict.values())
+        # Calculate missing values if possible
+        if total and subtotal and not tax:
+            tax = round(total - subtotal, 2)
+        elif total and tax and not subtotal:
+            subtotal = round(total - tax, 2)
         
         return jsonify({
             'success': True,
             'data': {
                 'store_name': result.get('store_name') or 'Unknown Store',
-                'store_address': result.get('store_address'),
-                'total': float(result.get('total', 0)) if result.get('total') else 0,
-                'subtotal': float(result.get('subtotal', 0)) if result.get('subtotal') else None,
-                'tax': float(result.get('tax', 0)) if result.get('tax') else None,
+                'subtotal': subtotal,
+                'tax': tax,
+                'total': total,
                 'date': result.get('date'),
-                'time': result.get('time'),
-                'payment_method': result.get('payment_method'),
-                'category': result.get('category', 'Other'),
-                'items': items,
-                'item_count': len(items)
+                'category': result.get('category', 'Other')
             }
         })
         

@@ -4,6 +4,17 @@
 
 let editingCategoryId = null;
 
+// Basic auth headers helper for protected API calls
+function getAuthHeaders(json = true) {
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (json) headers['Content-Type'] = 'application/json';
+    if (token && token !== 'undefined' && token !== 'null') {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
 // Initialize settings
 document.addEventListener('DOMContentLoaded', async () => {
     await loadCategories();
@@ -110,7 +121,7 @@ function setupSettingsForm() {
         try {
             const response = await fetch('/api/settings', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(newSettings)
             });
             
@@ -172,7 +183,7 @@ function setupGeminiForm() {
             
             const response = await fetch('/api/settings', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(currentSettings)
             });
             
@@ -264,7 +275,7 @@ async function saveCategory() {
         
         const response = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify(category)
         });
         
@@ -292,7 +303,8 @@ async function deleteCategory(id) {
     
     try {
         const response = await fetch(`/api/categories/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders(false)
         });
         
         if (response.ok) {
@@ -309,7 +321,7 @@ async function deleteCategory(id) {
 }
 
 function exportData() {
-    fetch('/api/transactions')
+    fetch('/api/transactions', { headers: getAuthHeaders(false) })
         .then(response => response.json())
         .then(transactions => {
             if (transactions.length === 0) {
@@ -415,7 +427,7 @@ function importData(event) {
                 
                 const response = await fetch('/api/transactions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(transaction)
                 });
                 
@@ -459,13 +471,13 @@ function closeClearDataModal() {
 
 async function clearAllData() {
     try {
-        const response = await fetch('/api/transactions');
+        const response = await fetch('/api/transactions', { headers: getAuthHeaders(false) });
         const transactions = await response.json();
         
         showToast('warning', 'Clearing...', 'Please wait');
         
         for (const t of transactions) {
-            await fetch(`/api/transactions/${t.id}`, { method: 'DELETE' });
+            await fetch(`/api/transactions/${t.id}`, { method: 'DELETE', headers: getAuthHeaders(false) });
         }
         
         closeClearDataModal();

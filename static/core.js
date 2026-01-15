@@ -46,6 +46,12 @@ async function loadConfig() {
     }
 }
 
+async function ensureVapidKey() {
+    if (VAPID_PUBLIC_KEY) return VAPID_PUBLIC_KEY;
+    await loadConfig();
+    return VAPID_PUBLIC_KEY;
+}
+
 export function initIcons() {
     // Navigation icons
     const navDashboard = document.getElementById('nav-dashboard');
@@ -342,6 +348,11 @@ export async function syncNotificationsPreference(enable) {
         }
         showToast('success', 'Notifications disabled', 'You will not receive push alerts');
         return true;
+    }
+
+    // Try to populate VAPID key lazily if missing
+    if (!VAPID_PUBLIC_KEY) {
+        await ensureVapidKey();
     }
 
     const permission = await Notification.requestPermission();

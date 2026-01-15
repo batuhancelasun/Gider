@@ -17,6 +17,7 @@ function getAuthHeaders(json = true) {
 
 // Initialize settings
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadStaticConfig();
     await loadCategories();
     await loadSettingsForm();
     renderCategoriesList();
@@ -25,6 +26,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderIconPicker();
     initSettingsIcons();
 });
+
+async function loadStaticConfig() {
+    try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+            const cfg = await res.json();
+            if (cfg?.vapidPublicKey) {
+                window.VAPID_PUBLIC_KEY = cfg.vapidPublicKey;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load config on static settings page', e);
+    }
+}
 
 function initSettingsIcons() {
     // Scanner settings icon

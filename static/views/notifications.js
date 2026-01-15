@@ -2,8 +2,8 @@
 import { auth } from '../auth.js';
 import { formatCurrency, formatDateShort, showToast } from '../core.js';
 
-let notifications = [];
-let settings = {};
+let recurringNotifications = [];
+let inAppNotifications = [];
 
 const ICONS = {
     alertCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
@@ -11,7 +11,10 @@ const ICONS = {
     clock: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
     calendar: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
     trendingUp: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
-    trendingDown: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`
+    trendingDown: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`,
+    bell: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+    trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+    check: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
 };
 
 export const NotificationsView = {
@@ -20,11 +23,29 @@ export const NotificationsView = {
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Notifications</h1>
-                    <p class="page-subtitle">Upcoming recurring transactions</p>
+                    <p class="page-subtitle">Upcoming reminders and alerts</p>
                 </div>
             </div>
 
             <div class="notifications-container">
+                <!-- In-app Notifications -->
+                <div class="notifications-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            ${ICONS.bell}
+                            <h3>Alerts</h3>
+                        </div>
+                        <span class="badge" id="alertBadge">0</span>
+                    </div>
+                    <div class="notification-list" id="alertsList">
+                        <div class="empty-state">
+                            ${ICONS.checkCircle}
+                            <p>No alerts</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recurring Transaction Reminders -->
                 <div class="notifications-section">
                     <div class="section-header">
                         <div class="section-title">
@@ -62,13 +83,13 @@ export const NotificationsView = {
 
     init: async () => {
         try {
-            await loadNotifications();
-            renderNotifications();
+            await loadAllNotifications();
+            renderAllNotifications();
             
             setInterval(async () => {
                 try {
-                    await loadNotifications();
-                    renderNotifications();
+                    await loadAllNotifications();
+                    renderAllNotifications();
                 } catch (err) {
                     console.error('Polling error:', err);
                 }
@@ -80,23 +101,66 @@ export const NotificationsView = {
     }
 };
 
-async function loadNotifications() {
+async function loadAllNotifications() {
     try {
-        const notifResponse = await fetch('/api/recurring/notifications', { headers: auth.getHeaders() });
-        if (!notifResponse.ok) {
-            throw new Error(`API error: ${notifResponse.status}`);
+        // Load in-app notifications
+        const alertsResponse = await fetch('/api/notifications', { headers: auth.getHeaders() });
+        if (alertsResponse.ok) {
+            inAppNotifications = await alertsResponse.json();
         }
-        notifications = await notifResponse.json();
+
+        // Load recurring transaction reminders
+        const recurringResponse = await fetch('/api/recurring/notifications', { headers: auth.getHeaders() });
+        if (recurringResponse.ok) {
+            recurringNotifications = await recurringResponse.json();
+        }
     } catch (error) {
         console.error('Failed to load notifications:', error);
-        notifications = { due: [], upcoming: [] };
         showToast('error', 'Error', 'Failed to load notifications');
     }
 }
 
-function renderNotifications() {
+function renderAllNotifications() {
+    renderAlerts();
+    renderRecurringNotifications();
+}
+
+function renderAlerts() {
+    const alertsList = document.getElementById('alertsList');
+    const badge = document.getElementById('alertBadge');
+    
+    if (!alertsList) return;
+
+    const unreadAlerts = inAppNotifications.filter(n => !n.read);
+    if (badge) badge.textContent = unreadAlerts.length;
+
+    if (inAppNotifications.length === 0) {
+        alertsList.innerHTML = `
+            <div class="empty-state">
+                ${ICONS.checkCircle}
+                <p>No alerts</p>
+            </div>
+        `;
+    } else {
+        alertsList.innerHTML = inAppNotifications.map(notif => `
+            <div class="notification-item alert-item ${notif.read ? 'read' : 'unread'}">
+                <div class="notification-content">
+                    <div class="notification-title">${notif.title}</div>
+                    <div class="notification-meta">${notif.body}</div>
+                    <div class="notification-time">${new Date(notif.created_at).toLocaleString()}</div>
+                </div>
+                <div class="notification-actions">
+                    ${!notif.read ? `<button class="btn-icon" title="Mark as read" onclick="window.markNotificationRead('${notif.id}')">${ICONS.check}</button>` : ''}
+                    <button class="btn-icon" title="Delete" onclick="window.deleteNotification('${notif.id}')">${ICONS.trash}</button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function renderRecurringNotifications() {
     try {
-        const { due = [], upcoming = [] } = notifications || {};
+        const { due = [], upcoming = [] } = recurringNotifications || {};
         
         // Update badges
         const dueBadge = document.getElementById('dueBadge');
@@ -115,7 +179,7 @@ function renderNotifications() {
                     </div>
                 `;
             } else {
-                dueList.innerHTML = due.map(item => renderNotificationItem(item, true)).join('');
+                dueList.innerHTML = due.map(item => renderRecurringItem(item, true)).join('');
             }
         }
         
@@ -130,15 +194,15 @@ function renderNotifications() {
                     </div>
                 `;
             } else {
-                upcomingList.innerHTML = upcoming.map(item => renderNotificationItem(item, false)).join('');
+                upcomingList.innerHTML = upcoming.map(item => renderRecurringItem(item, false)).join('');
             }
         }
     } catch (error) {
-        console.error('Error rendering notifications:', error);
+        console.error('Error rendering recurring notifications:', error);
     }
 }
 
-function renderNotificationItem(item, isDue) {
+function renderRecurringItem(item, isDue) {
     try {
         const nextDate = new Date(item.next_occurrence);
         const isValidDate = !isNaN(nextDate.getTime());
@@ -199,5 +263,37 @@ window.handleNotificationClick = function(id) {
         window.router.navigate('/recurring');
     } else {
         window.location.href = '/recurring';
+    }
+};
+
+window.markNotificationRead = async function(notificationId) {
+    try {
+        const response = await fetch(`/api/notifications/${notificationId}/read`, {
+            method: 'PUT',
+            headers: auth.getHeaders()
+        });
+        if (response.ok) {
+            await loadAllNotifications();
+            renderAllNotifications();
+            showToast('success', 'Marked as read', '');
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to mark as read');
+    }
+};
+
+window.deleteNotification = async function(notificationId) {
+    try {
+        const response = await fetch(`/api/notifications/${notificationId}`, {
+            method: 'DELETE',
+            headers: auth.getHeaders()
+        });
+        if (response.ok) {
+            await loadAllNotifications();
+            renderAllNotifications();
+            showToast('success', 'Notification deleted', '');
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to delete notification');
     }
 };

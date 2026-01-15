@@ -10,7 +10,6 @@ import re
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from pywebpush import webpush, WebPushException
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -21,9 +20,6 @@ USERS_FILE = DATA_DIR / 'users.json'
 # Configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-this')
-VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
-VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
-VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:admin@example.com')
 
 # Default categories with icons
 DEFAULT_CATEGORIES = [
@@ -110,15 +106,14 @@ def load_data(user_id):
             'recurring_transactions': [],
             'categories': DEFAULT_CATEGORIES.copy(),
             'items': [],
+            'notifications': [],
             'settings': {
                 'currency_symbol': '$',
                 'start_date': 1,
                 'theme': 'dark',
                 'gemini_api_key': '',
-                'notifications_enabled': True,
-                'notifications_lead_days': 3
-            },
-            'push_subscriptions': []
+                'notifications_enabled': True
+            }
         }
     
     with open(user_file, 'r', encoding='utf-8') as f:
@@ -129,6 +124,8 @@ def load_data(user_id):
         data['categories'] = DEFAULT_CATEGORIES.copy()
     if 'items' not in data:
         data['items'] = []
+    if 'notifications' not in data:
+        data['notifications'] = []
     if 'settings' not in data:
         data['settings'] = {
             'currency_symbol': '$',
@@ -140,8 +137,6 @@ def load_data(user_id):
         }
     else:
         data['settings'].setdefault('notifications_enabled', True)
-        data['settings'].setdefault('notifications_lead_days', 3)
-    data.setdefault('push_subscriptions', [])
     
     return data
 
@@ -241,56 +236,90 @@ def next_occurrence(rt):
     return calculate_next_date(rt, last_date)
 
 
-def save_subscription(current_user_id, subscription):
+def create_notification(current_user_id, title, body, notification_type='info'):
+    """Create an in-app notification for the user."""
     data = load_data(current_user_id)
-    subs = data.get('push_subscriptions', [])
-    endpoint = subscription.get('endpoint')
-    if not endpoint:
-        return False
-    # Deduplicate by endpoint
-    existing = [s for s in subs if s.get('endpoint') == endpoint]
-    if not existing:
-        subs.append(subscription)
-        data['push_subscriptions'] = subs
-        save_data(current_user_id, data)
-    return True
+    notification = {
+        'id': str(uuid.uuid4()),
+        'title': title,
+        'body': body,
+        'type': notification_type,
+        'read': False,
+        'created_at': datetime.utcnow().isoformat(),
+        'deleted_at': None
+    }
+    data['notifications'].append(notification)
+    save_data(current_user_id, data)
+    return notification
 
 
-def remove_subscription(current_user_id, endpoint):
+def sync_recurring_notifications(current_user_id):
+    """Auto-generate notifications for due/upcoming recurring transactions.
+    Called daily to create notifications for upcoming transactions."""
+    if not load_data(current_user_id).get('settings', {}).get('notifications_enabled', True):
+        return
+    
     data = load_data(current_user_id)
-    before = len(data.get('push_subscriptions', []))
-    data['push_subscriptions'] = [s for s in data.get('push_subscriptions', []) if s.get('endpoint') != endpoint]
-    if len(data['push_subscriptions']) != before:
-        save_data(current_user_id, data)
-    return True
-
-
-def send_web_push_to_user(current_user_id, payload):
-    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
-        raise RuntimeError('VAPID keys are not configured')
-
-    data = load_data(current_user_id)
-    subscriptions = data.get('push_subscriptions', [])
-    stale = []
-
-    for sub in subscriptions:
-        try:
-            webpush(
-                subscription_info=sub,
-                data=json.dumps(payload),
-                vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims={'sub': VAPID_SUBJECT}
-            )
-        except WebPushException as e:
-            # Collect stale/invalid endpoints to prune
-            if getattr(e, 'response', None) and e.response.status_code in (404, 410):
-                stale.append(sub.get('endpoint'))
-            else:
-                print(f"Web push failed: {e}")
-    for endpoint in stale:
-        remove_subscription(current_user_id, endpoint)
-
-    return {'sent': len(subscriptions), 'pruned': len(stale)}
+    today = datetime.now().date()
+    horizon = today + timedelta(days=7)  # 7-day horizon for notifications
+    
+    # Get all active recurring transactions due within 7 days
+    for rt in data.get('recurring_transactions', []):
+        if not rt.get('is_active', True):
+            continue
+        
+        next_date = next_occurrence(rt)
+        if not next_date:
+            continue
+        
+        # Skip if already past
+        if next_date < today:
+            continue
+        
+        # Only create notification if within horizon
+        if next_date > horizon:
+            continue
+        
+        # Check if notification already exists for this recurring transaction on this date
+        existing = [n for n in data.get('notifications', []) 
+                   if not n.get('deleted_at') and 
+                   n.get('type') == 'recurring' and
+                   n.get('recurring_id') == rt['id'] and
+                   n.get('notification_date') == next_date.isoformat()]
+        
+        if existing:
+            continue  # Already notified for this date
+        
+        # Create notification
+        amount_text = f"€{abs(rt.get('amount', 0))}" if rt.get('is_income') else f"-€{abs(rt.get('amount', 0))}"
+        category = rt.get('category', 'Other')
+        frequency = rt.get('frequency', 'monthly')
+        
+        days_until = (next_date - today).days
+        if days_until == 0:
+            time_text = "Today"
+        elif days_until == 1:
+            time_text = "Tomorrow"
+        else:
+            time_text = f"In {days_until} days"
+        
+        title = f"{rt.get('name', 'Transaction')} due {time_text}"
+        body = f"{amount_text} • {category} • {frequency}"
+        
+        notification = {
+            'id': str(uuid.uuid4()),
+            'title': title,
+            'body': body,
+            'type': 'recurring',
+            'recurring_id': rt['id'],
+            'notification_date': next_date.isoformat(),
+            'read': False,
+            'created_at': datetime.utcnow().isoformat(),
+            'deleted_at': None
+        }
+        data['notifications'].append(notification)
+    
+    save_data(current_user_id, data)
 
 # --- Auth Routes ---
 
@@ -560,49 +589,44 @@ def get_recurring_notifications(current_user_id):
     return jsonify({'due': due, 'upcoming': upcoming})
 
 
-@app.route('/api/notifications/subscribe', methods=['POST'])
+@app.route('/api/notifications', methods=['GET'])
 @login_required
-def subscribe_push(current_user_id):
-    body = request.json or {}
-    endpoint = body.get('endpoint')
-    if not endpoint:
-        return jsonify({'error': 'Missing endpoint'}), 400
-    saved = save_subscription(current_user_id, body)
-    if not saved:
-        return jsonify({'error': 'Could not save subscription'}), 400
-    return jsonify({'success': True})
+def get_notifications(current_user_id):
+    """Get all non-deleted notifications for the user."""
+    # First, sync recurring notifications for today
+    sync_recurring_notifications(current_user_id)
+    
+    data = load_data(current_user_id)
+    notifications = [n for n in data.get('notifications', []) if not n.get('deleted_at')]
+    # Sort by creation date (newest first)
+    notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    return jsonify(notifications)
 
 
-@app.route('/api/notifications/unsubscribe', methods=['POST'])
+@app.route('/api/notifications/<notification_id>/read', methods=['PUT'])
 @login_required
-def unsubscribe_push(current_user_id):
-    body = request.json or {}
-    endpoint = body.get('endpoint')
-    if not endpoint:
-        return jsonify({'error': 'Missing endpoint'}), 400
-    remove_subscription(current_user_id, endpoint)
-    return jsonify({'success': True})
+def mark_notification_read(current_user_id, notification_id):
+    """Mark a notification as read."""
+    data = load_data(current_user_id)
+    for notif in data.get('notifications', []):
+        if notif['id'] == notification_id:
+            notif['read'] = True
+            save_data(current_user_id, data)
+            return jsonify(notif)
+    return jsonify({'error': 'Notification not found'}), 404
 
 
-@app.route('/api/notifications/test', methods=['POST'])
+@app.route('/api/notifications/<notification_id>', methods=['DELETE'])
 @login_required
-def test_push(current_user_id):
-    try:
-        payload = request.json or {}
-        title = payload.get('title', 'Gider')
-        body = payload.get('body', 'Test notification')
-        url = payload.get('url', '/')
-        result = send_web_push_to_user(current_user_id, {
-            'title': title,
-            'body': body,
-            'url': url,
-            'icon': payload.get('icon', '/logo.png')
-        })
-        return jsonify({'success': True, **result})
-    except RuntimeError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        return jsonify({'error': f'Failed to send push: {str(e)}'}), 500
+def delete_notification(current_user_id, notification_id):
+    """Delete (soft delete) a notification."""
+    data = load_data(current_user_id)
+    for notif in data.get('notifications', []):
+        if notif['id'] == notification_id:
+            notif['deleted_at'] = datetime.utcnow().isoformat()
+            save_data(current_user_id, data)
+            return '', 204
+    return jsonify({'error': 'Notification not found'}), 404
 
 # Items API
 @app.route('/api/items', methods=['GET'])

@@ -61,15 +61,9 @@ export const SettingsView = {
                                 <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
                                     <div>
                                         <label class="form-label" for="notificationsToggle">Notifications</label>
-                                        <p class="form-hint">Enable or disable in-app/push notifications</p>
+                                        <p class="form-hint">Enable or disable in-app notifications for recurring transactions</p>
                                     </div>
                                     <input type="checkbox" id="notificationsToggle" style="width: 18px; height: 18px;">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label" for="notificationLead">Notify Ahead (days)</label>
-                                    <input type="number" id="notificationLead" class="form-input" min="0" max="30" value="3">
-                                    <p class="form-hint">How many days before the due date to notify for recurring items</p>
                                 </div>
 
                                 <div class="form-group">
@@ -269,7 +263,6 @@ async function loadSettings() {
         if (dateEl) dateEl.value = settings.start_date || 1;
         if (themeEl) themeEl.value = settings.theme || 'dark';
         if (notifEl) notifEl.checked = settings.notifications_enabled !== false;
-        if (leadEl) leadEl.value = settings.notifications_lead_days ?? 3;
         if (geminiEl && settings.gemini_api_key) {
             geminiEl.value = '••••••••••••••••';
             geminiEl.dataset.hasKey = 'true';
@@ -286,7 +279,6 @@ async function handleSettingsSubmit(e) {
         start_date: parseInt(document.getElementById('startDate').value) || 1,
         theme: document.getElementById('theme').value || 'dark',
         notifications_enabled: (document.getElementById('notificationsToggle')?.checked ?? true),
-        notifications_lead_days: Math.max(0, parseInt(document.getElementById('notificationLead')?.value) || 0),
         gemini_api_key: settings?.gemini_api_key || ''
     };
 

@@ -11,6 +11,7 @@ import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from pywebpush import webpush, WebPushException
+from py_vapid import Vapid01
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -265,9 +266,31 @@ def remove_subscription(current_user_id, endpoint):
     return True
 
 
+def get_vapid_private_key_pem():
+    """Get VAPID private key in PEM format using py_vapid."""
+    if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+        return None
+    try:
+        vapid = Vapid01()
+        # Load from base64url strings
+        vapid.from_raw(
+            private_key=base64.urlsafe_b64decode(VAPID_PRIVATE_KEY + '=='),
+            public_key=base64.urlsafe_b64decode(VAPID_PUBLIC_KEY + '==')
+        )
+        # Return private key in PEM format
+        return vapid.private_key_pem
+    except Exception as e:
+        print(f"Error loading VAPID keys: {e}")
+        return None
+
+
 def send_web_push_to_user(current_user_id, payload):
     if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
         raise RuntimeError('VAPID keys are not configured')
+
+    vapid_pem = get_vapid_private_key_pem()
+    if not vapid_pem:
+        raise RuntimeError('Failed to load VAPID private key')
 
     data = load_data(current_user_id)
     subscriptions = data.get('push_subscriptions', [])
@@ -278,7 +301,7 @@ def send_web_push_to_user(current_user_id, payload):
             webpush(
                 subscription_info=sub,
                 data=json.dumps(payload),
-                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_private_key=vapid_pem,
                 vapid_claims={'sub': VAPID_SUBJECT}
             )
         except WebPushException as e:

@@ -5,7 +5,6 @@ import { LoginView, RegisterView } from './views/auth.js';
 import { DashboardView } from './views/dashboard.js';
 import { TransactionsView } from './views/transactions.js';
 import { AnalyticsView } from './views/analytics.js';
-import { ItemsView } from './views/items.js';
 import { RecurringView } from './views/recurring.js';
 import { NotificationsView } from './views/notifications.js';
 import { SettingsView } from './views/settings.js';
@@ -18,7 +17,6 @@ router.addRoute('/dashboard', DashboardView);
 router.addRoute('/', DashboardView); // Default
 router.addRoute('/table', TransactionsView);
 router.addRoute('/analytics', AnalyticsView);
-router.addRoute('/items', ItemsView);
 router.addRoute('/recurring', RecurringView);
 router.addRoute('/notifications', NotificationsView);
 router.addRoute('/settings', SettingsView);

@@ -42,12 +42,6 @@ DEFAULT_CATEGORIES = [
     {'id': '17', 'name': 'Savings', 'icon': 'savings', 'type': 'income'},
     {'id': '18', 'name': 'Other', 'icon': 'other', 'type': 'both'}
 ]
-
-
-def normalize_item_name(name: str) -> str:
-    """Return a title-cased item name for consistent storage/display."""
-    return name.strip().title() if name else ''
-
 def ensure_data_dir():
     """Create data directory if it doesn't exist"""
     DATA_DIR.mkdir(exist_ok=True)
@@ -105,7 +99,6 @@ def load_data(user_id):
             'transactions': [],
             'recurring_transactions': [],
             'categories': DEFAULT_CATEGORIES.copy(),
-            'items': [],
             'notifications': [],
             'settings': {
                 'currency_symbol': '$',
@@ -122,8 +115,6 @@ def load_data(user_id):
     # Ensure structure (migrations)
     if not data.get('categories'):
         data['categories'] = DEFAULT_CATEGORIES.copy()
-    if 'items' not in data:
-        data['items'] = []
     if 'notifications' not in data:
         data['notifications'] = []
     if 'settings' not in data:
@@ -414,25 +405,6 @@ def create_transaction(current_user_id):
     if 'date' not in transaction or not transaction['date']:
         transaction['date'] = datetime.utcnow().isoformat() + 'Z'
     
-    # Handle items if present
-    if 'items' in transaction and transaction['items']:
-        normalized_items = []
-        for item in transaction['items']:
-            item_name = normalize_item_name(item.get('name', ''))
-            item_record = {
-                'id': str(uuid.uuid4()),
-                'name': item_name,
-                'quantity': item.get('quantity', 1),
-                'price': item.get('price', 0),
-                'transaction_id': transaction['id'],
-                'store': transaction.get('name', ''),
-                'category': transaction.get('category', ''),
-                'date': transaction['date']
-            }
-            normalized_items.append({**item, 'name': item_name})
-            data['items'].append(item_record)
-        transaction['items'] = normalized_items
-    
     data['transactions'].append(transaction)
     save_data(current_user_id, data)
     return jsonify(transaction), 201
@@ -459,30 +431,7 @@ def update_transaction(current_user_id, transaction_id):
         if transaction['id'] == transaction_id:
             # Preserve existing items when none are provided
             incoming_items = updated_transaction.get('items') if 'items' in updated_transaction else transaction.get('items', [])
-
-            if 'items' in updated_transaction:
-                # Remove old items for this transaction
-                data['items'] = [itm for itm in data['items'] if itm.get('transaction_id') != transaction_id]
-
-                normalized_items = []
-                for item in incoming_items or []:
-                    item_name = normalize_item_name(item.get('name', ''))
-                    item_record = {
-                        'id': str(uuid.uuid4()),
-                        'name': item_name,
-                        'quantity': item.get('quantity', 1),
-                        'price': item.get('price', 0),
-                        'transaction_id': transaction_id,
-                        'store': updated_transaction.get('name', transaction.get('name', '')),
-                        'category': updated_transaction.get('category', transaction.get('category', '')),
-                        'date': updated_transaction.get('date', transaction.get('date'))
-                    }
-                    normalized_items.append({**item, 'name': item_name})
-                    data['items'].append(item_record)
-
-                updated_transaction['items'] = normalized_items
-            else:
-                updated_transaction['items'] = incoming_items
+            updated_transaction['items'] = incoming_items
 
             data['transactions'][i] = updated_transaction
             save_data(current_user_id, data)
@@ -496,8 +445,6 @@ def delete_transaction(current_user_id, transaction_id):
     """Delete a transaction"""
     data = load_data(current_user_id)
     data['transactions'] = [t for t in data['transactions'] if t['id'] != transaction_id]
-    # Also delete associated items
-    data['items'] = [i for i in data['items'] if i.get('transaction_id') != transaction_id]
     save_data(current_user_id, data)
     return '', 204
 
@@ -642,67 +589,6 @@ def delete_notification(current_user_id, notification_id):
             save_data(current_user_id, data)
             return '', 204
     return jsonify({'error': 'Notification not found'}), 404
-
-# Items API
-@app.route('/api/items', methods=['GET'])
-@login_required
-def get_items(current_user_id):
-    """Get all items"""
-    data = load_data(current_user_id)
-    items = data.get('items', [])
-
-    updated = False
-    for item in items:
-        normalized_name = normalize_item_name(item.get('name', ''))
-        if normalized_name and item.get('name') != normalized_name:
-            item['name'] = normalized_name
-            updated = True
-
-    if updated:
-        save_data(current_user_id, data)
-
-    return jsonify(items)
-
-@app.route('/api/items/stats', methods=['GET'])
-@login_required
-def get_item_stats(current_user_id):
-    """Get item statistics"""
-    data = load_data(current_user_id)
-    items = data.get('items', [])
-    
-    # Calculate stats
-    item_counts = {}
-    store_counts = {}
-    
-    for item in items:
-        display_name = normalize_item_name(item.get('name', 'Unknown')) or 'Unknown'
-        name_key = display_name.lower()
-        qty = item.get('quantity', 1)
-        price = item.get('price', 0)
-        store = item.get('store', 'Unknown')
-        
-        # Item frequency
-        if name_key not in item_counts:
-            item_counts[name_key] = {'count': 0, 'total_qty': 0, 'total_spent': 0, 'name': display_name}
-        item_counts[name_key]['count'] += 1
-        item_counts[name_key]['total_qty'] += qty
-        item_counts[name_key]['total_spent'] += price * qty
-        
-        # Store frequency
-        if store not in store_counts:
-            store_counts[store] = 0
-        store_counts[store] += 1
-    
-    # Sort by frequency
-    top_items = sorted(item_counts.values(), key=lambda x: x['total_qty'], reverse=True)[:20]
-    top_stores = sorted(store_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    
-    return jsonify({
-        'total_items': len(items),
-        'unique_items': len(item_counts),
-        'top_items': top_items,
-        'top_stores': [{'name': s[0], 'count': s[1]} for s in top_stores]
-    })
 
 # Category routes
 @app.route('/api/categories', methods=['GET'])

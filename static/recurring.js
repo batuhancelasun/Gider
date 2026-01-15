@@ -36,9 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function initRecurringIcons() {
     // Navigation icons - set directly
-    const navItems = document.getElementById('nav-items');
     const navRecurring = document.getElementById('nav-recurring');
-    if (navItems) navItems.innerHTML = getIcon('shoppingBag', 18) + '<span>Items</span>';
     if (navRecurring) navRecurring.innerHTML = getIcon('subscriptions', 18) + '<span>Recurring</span>';
 
     // Add button
